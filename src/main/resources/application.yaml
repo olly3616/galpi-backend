@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: galpi-backend
+  datasource:
+    url: jdbc:mysql://localhost:3306/galpi
+    username: root
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
