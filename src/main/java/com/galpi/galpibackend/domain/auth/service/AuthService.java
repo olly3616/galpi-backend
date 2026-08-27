@@ -1,6 +1,7 @@
 package com.galpi.galpibackend.domain.auth.service;
 
 import com.galpi.galpibackend.domain.auth.dto.AuthResponse;
+import com.galpi.galpibackend.domain.auth.dto.LoginRequest;
 import com.galpi.galpibackend.domain.auth.dto.SignupRequest;
 import com.galpi.galpibackend.domain.user.entity.User;
 import com.galpi.galpibackend.domain.user.repository.UserRepository;
@@ -39,6 +40,22 @@ public class AuthService {
                 .nickname(request.nickname())
                 .build();
         userRepository.save(user);
+
+        String accessToken = jwtProvider.createAccessToken(user.getId());
+        String refreshToken = jwtProvider.createRefreshToken(user.getId());
+
+        return AuthResponse.of(user, accessToken, refreshToken);
+    }
+
+    @Transactional(readOnly = true)
+    public AuthResponse login(LoginRequest request) {
+        // 계정 없음/비밀번호 불일치를 구분하지 않음 (보안)
+        User user = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CREDENTIALS));
+
+        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+            throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
+        }
 
         String accessToken = jwtProvider.createAccessToken(user.getId());
         String refreshToken = jwtProvider.createRefreshToken(user.getId());

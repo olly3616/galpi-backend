@@ -1,6 +1,7 @@
 package com.galpi.galpibackend.domain.auth.controller;
 
 import com.galpi.galpibackend.domain.auth.dto.AuthResponse;
+import com.galpi.galpibackend.domain.auth.dto.LoginRequest;
 import com.galpi.galpibackend.domain.auth.dto.SignupRequest;
 import com.galpi.galpibackend.domain.auth.service.AuthService;
 import jakarta.validation.Valid;
@@ -25,5 +26,11 @@ public class AuthController {
     public ResponseEntity<AuthResponse> signup(@Valid @RequestBody SignupRequest request) {
         AuthResponse response = authService.signup(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        AuthResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
     }
 }

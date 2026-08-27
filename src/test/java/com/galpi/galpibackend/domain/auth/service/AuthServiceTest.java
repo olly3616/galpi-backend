@@ -8,8 +8,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.galpi.galpibackend.domain.auth.dto.AuthResponse;
+import com.galpi.galpibackend.domain.auth.dto.LoginRequest;
 import com.galpi.galpibackend.domain.auth.dto.SignupRequest;
 import com.galpi.galpibackend.domain.user.entity.User;
+import java.util.Optional;
 import com.galpi.galpibackend.domain.user.repository.UserRepository;
 import com.galpi.galpibackend.global.error.CustomException;
 import com.galpi.galpibackend.global.error.ErrorCode;
@@ -38,6 +40,17 @@ class AuthServiceTest {
     private AuthService authService;
 
     private final SignupRequest request = new SignupRequest("a@b.com", "12345678", "책벌레");
+    private final LoginRequest loginRequest = new LoginRequest("a@b.com", "12345678");
+
+    private User existingUser() {
+        User user = User.builder()
+                .email("a@b.com")
+                .password("encoded")
+                .nickname("책벌레")
+                .build();
+        ReflectionTestUtils.setField(user, "id", 1L);
+        return user;
+    }
 
     @Test
     @DisplayName("회원가입 성공 시 사용자 저장 후 토큰을 반환한다")
@@ -87,5 +100,46 @@ class AuthServiceTest {
                 .isEqualTo(ErrorCode.NICKNAME_DUPLICATED);
 
         verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("로그인 성공 시 토큰을 반환한다")
+    void login_success() {
+        User user = existingUser();
+        given(userRepository.findByEmail(loginRequest.email())).willReturn(Optional.of(user));
+        given(passwordEncoder.matches(loginRequest.password(), user.getPassword())).willReturn(true);
+        given(jwtProvider.createAccessToken(1L)).willReturn("access");
+        given(jwtProvider.createRefreshToken(1L)).willReturn("refresh");
+
+        AuthResponse response = authService.login(loginRequest);
+
+        assertThat(response.userId()).isEqualTo(1L);
+        assertThat(response.nickname()).isEqualTo("책벌레");
+        assertThat(response.accessToken()).isEqualTo("access");
+        assertThat(response.refreshToken()).isEqualTo("refresh");
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 이메일이면 INVALID_CREDENTIALS 예외를 던진다")
+    void login_emailNotFound() {
+        given(userRepository.findByEmail(loginRequest.email())).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.login(loginRequest))
+                .isInstanceOf(CustomException.class)
+                .extracting(e -> ((CustomException) e).getErrorCode())
+                .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
+    }
+
+    @Test
+    @DisplayName("비밀번호가 일치하지 않으면 INVALID_CREDENTIALS 예외를 던진다")
+    void login_wrongPassword() {
+        User user = existingUser();
+        given(userRepository.findByEmail(loginRequest.email())).willReturn(Optional.of(user));
+        given(passwordEncoder.matches(loginRequest.password(), user.getPassword())).willReturn(false);
+
+        assertThatThrownBy(() -> authService.login(loginRequest))
+                .isInstanceOf(CustomException.class)
+                .extracting(e -> ((CustomException) e).getErrorCode())
+                .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
     }
 }
