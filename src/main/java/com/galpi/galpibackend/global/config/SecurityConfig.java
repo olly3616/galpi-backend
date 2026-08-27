@@ -23,7 +23,10 @@ import tools.jackson.databind.ObjectMapper;
 public class SecurityConfig {
 
     private static final String[] PERMIT_ALL_PATHS = {
-            "/api/auth/**"
+            "/api/auth/**",
+            "/swagger-ui.html",
+            "/swagger-ui/**",
+            "/v3/api-docs/**"
     };
 
     private final JwtProvider jwtProvider;
