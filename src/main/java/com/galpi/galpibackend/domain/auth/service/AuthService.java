@@ -2,6 +2,8 @@ package com.galpi.galpibackend.domain.auth.service;
 
 import com.galpi.galpibackend.domain.auth.dto.AuthResponse;
 import com.galpi.galpibackend.domain.auth.dto.LoginRequest;
+import com.galpi.galpibackend.domain.auth.dto.RefreshRequest;
+import com.galpi.galpibackend.domain.auth.dto.RefreshResponse;
 import com.galpi.galpibackend.domain.auth.dto.SignupRequest;
 import com.galpi.galpibackend.domain.user.entity.User;
 import com.galpi.galpibackend.domain.user.repository.UserRepository;
@@ -61,5 +63,22 @@ public class AuthService {
         String refreshToken = jwtProvider.createRefreshToken(user.getId());
 
         return AuthResponse.of(user, accessToken, refreshToken);
+    }
+
+    @Transactional(readOnly = true)
+    public RefreshResponse refresh(RefreshRequest request) {
+        String refreshToken = request.refreshToken();
+
+        if (!jwtProvider.validateToken(refreshToken) || !jwtProvider.isRefreshToken(refreshToken)) {
+            throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        Long userId = jwtProvider.getUserId(refreshToken);
+        if (!userRepository.existsById(userId)) {
+            throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        String accessToken = jwtProvider.createAccessToken(userId);
+        return RefreshResponse.of(accessToken);
     }
 }

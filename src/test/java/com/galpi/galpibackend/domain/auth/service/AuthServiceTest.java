@@ -9,6 +9,8 @@ import static org.mockito.Mockito.verify;
 
 import com.galpi.galpibackend.domain.auth.dto.AuthResponse;
 import com.galpi.galpibackend.domain.auth.dto.LoginRequest;
+import com.galpi.galpibackend.domain.auth.dto.RefreshRequest;
+import com.galpi.galpibackend.domain.auth.dto.RefreshResponse;
 import com.galpi.galpibackend.domain.auth.dto.SignupRequest;
 import com.galpi.galpibackend.domain.user.entity.User;
 import java.util.Optional;
@@ -41,6 +43,7 @@ class AuthServiceTest {
 
     private final SignupRequest request = new SignupRequest("a@b.com", "12345678", "책벌레");
     private final LoginRequest loginRequest = new LoginRequest("a@b.com", "12345678");
+    private final RefreshRequest refreshRequest = new RefreshRequest("refresh-token");
 
     private User existingUser() {
         User user = User.builder()
@@ -141,5 +144,56 @@ class AuthServiceTest {
                 .isInstanceOf(CustomException.class)
                 .extracting(e -> ((CustomException) e).getErrorCode())
                 .isEqualTo(ErrorCode.INVALID_CREDENTIALS);
+    }
+
+    @Test
+    @DisplayName("유효한 리프레시 토큰이면 새 액세스 토큰을 반환한다")
+    void refresh_success() {
+        given(jwtProvider.validateToken(refreshRequest.refreshToken())).willReturn(true);
+        given(jwtProvider.isRefreshToken(refreshRequest.refreshToken())).willReturn(true);
+        given(jwtProvider.getUserId(refreshRequest.refreshToken())).willReturn(1L);
+        given(userRepository.existsById(1L)).willReturn(true);
+        given(jwtProvider.createAccessToken(1L)).willReturn("new-access");
+
+        RefreshResponse response = authService.refresh(refreshRequest);
+
+        assertThat(response.accessToken()).isEqualTo("new-access");
+    }
+
+    @Test
+    @DisplayName("유효하지 않은 토큰이면 INVALID_REFRESH_TOKEN 예외를 던진다")
+    void refresh_invalidToken() {
+        given(jwtProvider.validateToken(refreshRequest.refreshToken())).willReturn(false);
+
+        assertThatThrownBy(() -> authService.refresh(refreshRequest))
+                .isInstanceOf(CustomException.class)
+                .extracting(e -> ((CustomException) e).getErrorCode())
+                .isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN);
+    }
+
+    @Test
+    @DisplayName("리프레시 토큰이 아닌 액세스 토큰이면 INVALID_REFRESH_TOKEN 예외를 던진다")
+    void refresh_notRefreshToken() {
+        given(jwtProvider.validateToken(refreshRequest.refreshToken())).willReturn(true);
+        given(jwtProvider.isRefreshToken(refreshRequest.refreshToken())).willReturn(false);
+
+        assertThatThrownBy(() -> authService.refresh(refreshRequest))
+                .isInstanceOf(CustomException.class)
+                .extracting(e -> ((CustomException) e).getErrorCode())
+                .isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN);
+    }
+
+    @Test
+    @DisplayName("토큰의 사용자가 존재하지 않으면 INVALID_REFRESH_TOKEN 예외를 던진다")
+    void refresh_userNotFound() {
+        given(jwtProvider.validateToken(refreshRequest.refreshToken())).willReturn(true);
+        given(jwtProvider.isRefreshToken(refreshRequest.refreshToken())).willReturn(true);
+        given(jwtProvider.getUserId(refreshRequest.refreshToken())).willReturn(1L);
+        given(userRepository.existsById(1L)).willReturn(false);
+
+        assertThatThrownBy(() -> authService.refresh(refreshRequest))
+                .isInstanceOf(CustomException.class)
+                .extracting(e -> ((CustomException) e).getErrorCode())
+                .isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN);
     }
 }
