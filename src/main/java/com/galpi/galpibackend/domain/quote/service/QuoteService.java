@@ -9,12 +9,15 @@ import com.galpi.galpibackend.domain.quote.dto.WorkQuotesResponse.QuoteSummary;
 import com.galpi.galpibackend.domain.quote.entity.Quote;
 import com.galpi.galpibackend.domain.quote.entity.Visibility;
 import com.galpi.galpibackend.domain.quote.repository.QuoteRepository;
+import com.galpi.galpibackend.domain.schedule.dto.ScheduleResponse;
+import com.galpi.galpibackend.domain.schedule.repository.QuoteScheduleRepository;
 import com.galpi.galpibackend.domain.work.dto.WorkBrief;
 import com.galpi.galpibackend.domain.work.entity.Work;
 import com.galpi.galpibackend.domain.work.repository.WorkRepository;
 import com.galpi.galpibackend.global.error.CustomException;
 import com.galpi.galpibackend.global.error.ErrorCode;
 import java.util.List;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,10 +26,13 @@ public class QuoteService {
 
     private final QuoteRepository quoteRepository;
     private final WorkRepository workRepository;
+    private final QuoteScheduleRepository scheduleRepository;
 
-    public QuoteService(QuoteRepository quoteRepository, WorkRepository workRepository) {
+    public QuoteService(QuoteRepository quoteRepository, WorkRepository workRepository,
+                        QuoteScheduleRepository scheduleRepository) {
         this.quoteRepository = quoteRepository;
         this.workRepository = workRepository;
+        this.scheduleRepository = scheduleRepository;
     }
 
     @Transactional
@@ -56,7 +62,11 @@ public class QuoteService {
         if (!quote.isOwnedBy(userId)) {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
-        return QuoteResponse.from(quote);
+        List<ScheduleResponse> schedules = scheduleRepository
+                .findByQuoteIdOrderByCreatedAtAsc(quoteId).stream()
+                .map(ScheduleResponse::from)
+                .toList();
+        return QuoteResponse.of(quote, schedules);
     }
 
     @Transactional(readOnly = true)
@@ -64,10 +74,14 @@ public class QuoteService {
         Work work = workRepository.findById(workId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
 
-        List<QuoteSummary> quotes = quoteRepository
-                .findByUserIdAndWorkIdOrderByCreatedAtDesc(userId, workId).stream()
-                // TODO(F-10): 알림 설정 여부를 실제 스케줄 조회로 대체
-                .map(quote -> QuoteSummary.from(quote, false))
+        List<Quote> quoteList = quoteRepository.findByUserIdAndWorkIdOrderByCreatedAtDesc(userId, workId);
+        List<Long> quoteIds = quoteList.stream().map(Quote::getId).toList();
+        Set<Long> scheduledQuoteIds = quoteIds.isEmpty()
+                ? Set.of()
+                : Set.copyOf(scheduleRepository.findQuoteIdsWithScheduleIn(quoteIds));
+
+        List<QuoteSummary> quotes = quoteList.stream()
+                .map(quote -> QuoteSummary.from(quote, scheduledQuoteIds.contains(quote.getId())))
                 .toList();
 
         return new WorkQuotesResponse(WorkBrief.from(work), quotes);
@@ -102,7 +116,8 @@ public class QuoteService {
         if (!quote.isOwnedBy(userId)) {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
-        // TODO(F-10): 연결된 알림(quote_schedules)도 함께 삭제
+        // 연결된 알림(quote_schedules)도 함께 삭제
+        scheduleRepository.deleteByQuoteId(quoteId);
         quoteRepository.delete(quote);
         return new DeleteQuoteResponse(true);
     }
