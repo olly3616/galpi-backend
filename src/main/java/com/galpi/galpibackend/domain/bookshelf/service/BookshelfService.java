@@ -7,11 +7,17 @@ import com.galpi.galpibackend.domain.bookshelf.dto.BookshelfResponse.BookshelfIt
 import com.galpi.galpibackend.domain.bookshelf.dto.RemoveBookshelfResponse;
 import com.galpi.galpibackend.domain.bookshelf.entity.Bookshelf;
 import com.galpi.galpibackend.domain.bookshelf.repository.BookshelfRepository;
+import com.galpi.galpibackend.domain.quote.repository.QuoteRepository;
+import com.galpi.galpibackend.domain.quote.repository.QuoteRepository.WorkQuoteCount;
 import com.galpi.galpibackend.domain.work.entity.BookSource;
 import com.galpi.galpibackend.domain.work.entity.Work;
 import com.galpi.galpibackend.domain.work.repository.WorkRepository;
 import com.galpi.galpibackend.global.error.CustomException;
 import com.galpi.galpibackend.global.error.ErrorCode;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -24,10 +30,13 @@ public class BookshelfService {
 
     private final BookshelfRepository bookshelfRepository;
     private final WorkRepository workRepository;
+    private final QuoteRepository quoteRepository;
 
-    public BookshelfService(BookshelfRepository bookshelfRepository, WorkRepository workRepository) {
+    public BookshelfService(BookshelfRepository bookshelfRepository, WorkRepository workRepository,
+                            QuoteRepository quoteRepository) {
         this.bookshelfRepository = bookshelfRepository;
         this.workRepository = workRepository;
+        this.quoteRepository = quoteRepository;
     }
 
     @Transactional
@@ -51,17 +60,29 @@ public class BookshelfService {
         Pageable pageable = PageRequest.of(page, size);
         Page<Bookshelf> shelfPage = bookshelfRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
 
+        List<Long> workIds = shelfPage.getContent().stream()
+                .map(shelf -> shelf.getWork().getId())
+                .toList();
+        Map<Long, Long> quoteCounts = countQuotesByWork(userId, workIds);
+
         var items = shelfPage.getContent().stream()
                 .map(shelf -> {
                     Work work = shelf.getWork();
-                    // TODO(F-08): 대사 기능 구현 후 실제 대사 개수로 대체
-                    long quoteCount = 0L;
+                    long quoteCount = quoteCounts.getOrDefault(work.getId(), 0L);
                     return new BookshelfItem(work.getId(), work.getTitle(), work.getAuthor(),
                             work.getCoverUrl(), quoteCount);
                 })
                 .toList();
 
         return new BookshelfResponse(items, page, shelfPage.hasNext());
+    }
+
+    private Map<Long, Long> countQuotesByWork(Long userId, List<Long> workIds) {
+        if (workIds.isEmpty()) {
+            return Map.of();
+        }
+        return quoteRepository.countByUserIdAndWorkIdIn(userId, workIds).stream()
+                .collect(Collectors.toMap(WorkQuoteCount::getWorkId, WorkQuoteCount::getCount));
     }
 
     @Transactional
