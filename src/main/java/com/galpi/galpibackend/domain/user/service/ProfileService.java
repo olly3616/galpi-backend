@@ -43,7 +43,7 @@ public class ProfileService {
 
         // 본인이거나 팔로우 중일 때만 FOLLOWERS 공개 대사를 노출
         List<ProfileQuote> quotes = (isSelf || isFollowing)
-                ? quoteRepository.findByUserIdAndVisibilityOrderByCreatedAtDesc(targetId, Visibility.FOLLOWERS)
+                ? quoteRepository.findVisibleQuotesWithWork(targetId, Visibility.FOLLOWERS)
                         .stream()
                         .map(this::toProfileQuote)
                         .toList()

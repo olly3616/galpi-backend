@@ -15,6 +15,8 @@ public interface LikeRepository extends JpaRepository<Like, Long> {
 
     long countByQuoteId(Long quoteId);
 
+    void deleteByQuoteId(Long quoteId);
+
     /**
      * 여러 대사의 좋아요 개수를 한 번에 집계한다. (피드 N+1 방지)
      */

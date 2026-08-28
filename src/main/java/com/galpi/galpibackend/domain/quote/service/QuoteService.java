@@ -8,6 +8,7 @@ import com.galpi.galpibackend.domain.quote.dto.WorkQuotesResponse;
 import com.galpi.galpibackend.domain.quote.dto.WorkQuotesResponse.QuoteSummary;
 import com.galpi.galpibackend.domain.quote.entity.Quote;
 import com.galpi.galpibackend.domain.quote.entity.Visibility;
+import com.galpi.galpibackend.domain.like.repository.LikeRepository;
 import com.galpi.galpibackend.domain.quote.repository.QuoteRepository;
 import com.galpi.galpibackend.domain.schedule.dto.ScheduleResponse;
 import com.galpi.galpibackend.domain.schedule.repository.QuoteScheduleRepository;
@@ -27,12 +28,14 @@ public class QuoteService {
     private final QuoteRepository quoteRepository;
     private final WorkRepository workRepository;
     private final QuoteScheduleRepository scheduleRepository;
+    private final LikeRepository likeRepository;
 
     public QuoteService(QuoteRepository quoteRepository, WorkRepository workRepository,
-                        QuoteScheduleRepository scheduleRepository) {
+                        QuoteScheduleRepository scheduleRepository, LikeRepository likeRepository) {
         this.quoteRepository = quoteRepository;
         this.workRepository = workRepository;
         this.scheduleRepository = scheduleRepository;
+        this.likeRepository = likeRepository;
     }
 
     @Transactional
@@ -116,8 +119,9 @@ public class QuoteService {
         if (!quote.isOwnedBy(userId)) {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
-        // 연결된 알림(quote_schedules)도 함께 삭제
+        // 연결된 알림(quote_schedules)과 좋아요(likes)도 함께 삭제
         scheduleRepository.deleteByQuoteId(quoteId);
+        likeRepository.deleteByQuoteId(quoteId);
         quoteRepository.delete(quote);
         return new DeleteQuoteResponse(true);
     }

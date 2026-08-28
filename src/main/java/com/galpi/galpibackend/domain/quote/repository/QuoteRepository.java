@@ -13,10 +13,22 @@ public interface QuoteRepository extends JpaRepository<Quote, Long> {
 
     List<Quote> findByUserIdAndWorkIdOrderByCreatedAtDesc(Long userId, Long workId);
 
-    List<Quote> findByUserIdAndVisibilityOrderByCreatedAtDesc(Long userId, Visibility visibility);
+    // 출처(work)를 fetch join으로 함께 로딩해 N+1을 방지한다. (프로필 공개 대사)
+    @Query("select q from Quote q join fetch q.work "
+            + "where q.userId = :userId and q.visibility = :visibility "
+            + "order by q.createdAt desc")
+    List<Quote> findVisibleQuotesWithWork(@Param("userId") Long userId,
+                                          @Param("visibility") Visibility visibility);
 
-    Page<Quote> findByUserIdInAndVisibilityOrderByCreatedAtDesc(
-            List<Long> userIds, Visibility visibility, Pageable pageable);
+    // 피드: 출처를 fetch join. work는 ManyToOne이라 페이지네이션과 함께 써도 안전하다.
+    @Query(value = "select q from Quote q join fetch q.work "
+            + "where q.userId in :userIds and q.visibility = :visibility "
+            + "order by q.createdAt desc",
+            countQuery = "select count(q) from Quote q "
+            + "where q.userId in :userIds and q.visibility = :visibility")
+    Page<Quote> findFeedQuotesWithWork(@Param("userIds") List<Long> userIds,
+                                       @Param("visibility") Visibility visibility,
+                                       Pageable pageable);
 
     /**
      * 여러 책에 대한 사용자의 대사 개수를 한 번에 집계한다. (책장 조회 N+1 방지)

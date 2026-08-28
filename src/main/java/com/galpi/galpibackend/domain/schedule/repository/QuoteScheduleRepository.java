@@ -9,11 +9,17 @@ import org.springframework.data.repository.query.Param;
 
 public interface QuoteScheduleRepository extends JpaRepository<QuoteSchedule, Long> {
 
-    List<QuoteSchedule> findByUserIdOrderByCreatedAtDesc(Long userId);
+    // 대사·출처를 fetch join으로 함께 로딩 (내 알림 목록 N+1 방지)
+    @Query("select s from QuoteSchedule s join fetch s.quote q join fetch q.work "
+            + "where s.userId = :userId order by s.createdAt desc")
+    List<QuoteSchedule> findByUserIdWithQuote(@Param("userId") Long userId);
 
     List<QuoteSchedule> findByQuoteIdOrderByCreatedAtAsc(Long quoteId);
 
-    List<QuoteSchedule> findByIsActiveTrueAndSendTime(LocalTime sendTime);
+    // 발송 배치: 대사·출처를 함께 로딩 (발송 시 N+1 방지)
+    @Query("select s from QuoteSchedule s join fetch s.quote q join fetch q.work "
+            + "where s.isActive = true and s.sendTime = :sendTime")
+    List<QuoteSchedule> findActiveBySendTimeWithQuote(@Param("sendTime") LocalTime sendTime);
 
     void deleteByQuoteId(Long quoteId);
 

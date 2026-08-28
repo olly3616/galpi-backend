@@ -66,7 +66,7 @@ class ProfileServiceTest {
         given(followRepository.existsByFollowerIdAndFollowingId(1L, 2L)).willReturn(true);
         given(followRepository.countByFollowingId(2L)).willReturn(5L);
         given(followRepository.countByFollowerId(2L)).willReturn(3L);
-        given(quoteRepository.findByUserIdAndVisibilityOrderByCreatedAtDesc(2L, Visibility.FOLLOWERS))
+        given(quoteRepository.findVisibleQuotesWithWork(2L, Visibility.FOLLOWERS))
                 .willReturn(List.of(followersQuote()));
 
         ProfileResponse response = profileService.getProfile(1L, 2L);
@@ -92,7 +92,7 @@ class ProfileServiceTest {
         assertThat(response.isFollowing()).isFalse();
         assertThat(response.quotes()).isEmpty();
         verify(quoteRepository, never())
-                .findByUserIdAndVisibilityOrderByCreatedAtDesc(2L, Visibility.FOLLOWERS);
+                .findVisibleQuotesWithWork(2L, Visibility.FOLLOWERS);
     }
 
     @Test
@@ -101,7 +101,7 @@ class ProfileServiceTest {
         given(userRepository.findById(1L)).willReturn(Optional.of(userWithId(1L)));
         given(followRepository.countByFollowingId(1L)).willReturn(0L);
         given(followRepository.countByFollowerId(1L)).willReturn(0L);
-        given(quoteRepository.findByUserIdAndVisibilityOrderByCreatedAtDesc(1L, Visibility.FOLLOWERS))
+        given(quoteRepository.findVisibleQuotesWithWork(1L, Visibility.FOLLOWERS))
                 .willReturn(List.of());
 
         ProfileResponse response = profileService.getProfile(1L, 1L);

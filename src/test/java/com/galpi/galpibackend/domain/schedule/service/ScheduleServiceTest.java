@@ -98,6 +98,19 @@ class ScheduleServiceTest {
     }
 
     @Test
+    @DisplayName("daysOfWeek에 잘못된 요일 토큰이 있으면 VALIDATION_ERROR 예외를 던진다")
+    void createSchedule_invalidDaysOfWeek() {
+        CreateScheduleRequest request = new CreateScheduleRequest(
+                LocalTime.of(8, 0), RepeatType.WEEKLY, "MON,FUNDAY");
+        given(quoteRepository.findById(100L)).willReturn(Optional.of(quoteOwnedBy(1L)));
+
+        assertThatThrownBy(() -> scheduleService.createSchedule(1L, 100L, request))
+                .isInstanceOf(CustomException.class)
+                .extracting(e -> ((CustomException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
+    }
+
+    @Test
     @DisplayName("존재하지 않는 알림을 삭제하려 하면 NOT_FOUND 예외를 던진다")
     void deleteSchedule_notFound() {
         given(scheduleRepository.findById(99L)).willReturn(Optional.empty());

@@ -46,7 +46,7 @@ public class FeedService {
         }
 
         Pageable pageable = PageRequest.of(page, size);
-        Page<Quote> quotePage = quoteRepository.findByUserIdInAndVisibilityOrderByCreatedAtDesc(
+        Page<Quote> quotePage = quoteRepository.findFeedQuotesWithWork(
                 followingIds, Visibility.FOLLOWERS, pageable);
         List<Quote> quotes = quotePage.getContent();
         if (quotes.isEmpty()) {
