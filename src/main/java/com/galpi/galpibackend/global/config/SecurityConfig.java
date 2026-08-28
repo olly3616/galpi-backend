@@ -37,9 +37,12 @@ public class SecurityConfig {
         this.objectMapper = objectMapper;
     }
 
+    // BCrypt 강도(work factor)를 기본 10에서 12로 상향해 무차별 대입 비용을 높인다.
+    private static final int BCRYPT_STRENGTH = 12;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new BCryptPasswordEncoder(BCRYPT_STRENGTH);
     }
 
     @Bean

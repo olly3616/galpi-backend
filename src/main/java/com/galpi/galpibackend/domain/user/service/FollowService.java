@@ -27,7 +27,7 @@ public class FollowService {
 
     @Transactional(readOnly = true)
     public UserSearchResponse searchUsers(Long userId, String query) {
-        List<User> users = userRepository.findByNicknameContainingIgnoreCaseAndIdNot(query, userId);
+        List<User> users = userRepository.searchByNickname(escapeLike(query), userId);
 
         List<Long> userIds = users.stream().map(User::getId).toList();
         Set<Long> followingIds = userIds.isEmpty()
@@ -43,6 +43,20 @@ public class FollowService {
                 .toList();
 
         return new UserSearchResponse(items);
+    }
+
+    /**
+     * LIKE 패턴의 특수문자(\, %, _)를 이스케이프해, 사용자가 와일드카드로 검색 결과를 조작하지 못하게 한다.
+     * 이스케이프 문자는 '\'이며 UserRepository의 escape 절과 일치한다.
+     */
+    private String escapeLike(String keyword) {
+        if (keyword == null) {
+            return "";
+        }
+        return keyword
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 
     @Transactional

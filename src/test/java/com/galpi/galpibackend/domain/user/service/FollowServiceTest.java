@@ -46,7 +46,7 @@ class FollowServiceTest {
     @Test
     @DisplayName("사용자 검색 시 팔로우 여부(isFollowing)를 함께 표시한다")
     void searchUsers_marksFollowing() {
-        given(userRepository.findByNicknameContainingIgnoreCaseAndIdNot("책", 1L))
+        given(userRepository.searchByNickname("책", 1L))
                 .willReturn(List.of(userWithId(2L, "책벌레"), userWithId(3L, "책친구")));
         given(followRepository.findFollowingIdsIn(1L, List.of(2L, 3L))).willReturn(List.of(2L));
 
@@ -57,6 +57,16 @@ class FollowServiceTest {
         assertThat(response.items().get(0).isFollowing()).isTrue();
         assertThat(response.items().get(1).userId()).isEqualTo(3L);
         assertThat(response.items().get(1).isFollowing()).isFalse();
+    }
+
+    @Test
+    @DisplayName("검색어의 LIKE 와일드카드(%,_,\\)를 이스케이프해 조회한다")
+    void searchUsers_escapesLikeWildcards() {
+        given(userRepository.searchByNickname("100\\% \\_a\\\\b", 1L)).willReturn(List.of());
+
+        followService.searchUsers(1L, "100% _a\\b");
+
+        verify(userRepository).searchByNickname("100\\% \\_a\\\\b", 1L);
     }
 
     @Test
