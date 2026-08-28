@@ -13,6 +13,8 @@ import com.galpi.galpibackend.domain.bookshelf.dto.AddBookshelfResponse;
 import com.galpi.galpibackend.domain.bookshelf.dto.BookshelfResponse;
 import com.galpi.galpibackend.domain.bookshelf.entity.Bookshelf;
 import com.galpi.galpibackend.domain.bookshelf.repository.BookshelfRepository;
+import com.galpi.galpibackend.domain.quote.repository.QuoteRepository;
+import com.galpi.galpibackend.domain.quote.repository.QuoteRepository.WorkQuoteCount;
 import com.galpi.galpibackend.domain.work.entity.BookSource;
 import com.galpi.galpibackend.domain.work.entity.BookType;
 import com.galpi.galpibackend.domain.work.entity.Work;
@@ -39,6 +41,9 @@ class BookshelfServiceTest {
 
     @Mock
     private WorkRepository workRepository;
+
+    @Mock
+    private QuoteRepository quoteRepository;
 
     @InjectMocks
     private BookshelfService bookshelfService;
@@ -114,18 +119,31 @@ class BookshelfServiceTest {
     }
 
     @Test
-    @DisplayName("내 책장 조회 시 Work 정보를 items로 매핑한다")
+    @DisplayName("내 책장 조회 시 Work 정보와 대사 개수를 items로 매핑한다")
     void getMyBookshelf_mapsItems() {
         Work work = workWithId(10L);
         Bookshelf shelf = Bookshelf.builder().userId(1L).work(work).build();
         given(bookshelfRepository.findByUserIdOrderByCreatedAtDesc(eq(1L), any()))
                 .willReturn(new PageImpl<>(List.of(shelf), PageRequest.of(0, 20), 1));
+        WorkQuoteCount count = new WorkQuoteCount() {
+            @Override
+            public Long getWorkId() {
+                return 10L;
+            }
+
+            @Override
+            public long getCount() {
+                return 3L;
+            }
+        };
+        given(quoteRepository.countByUserIdAndWorkIdIn(eq(1L), any())).willReturn(List.of(count));
 
         BookshelfResponse response = bookshelfService.getMyBookshelf(1L, 0, 20);
 
         assertThat(response.items()).hasSize(1);
         assertThat(response.items().get(0).workId()).isEqualTo(10L);
         assertThat(response.items().get(0).title()).isEqualTo("데미안");
+        assertThat(response.items().get(0).quoteCount()).isEqualTo(3L);
         assertThat(response.hasNext()).isFalse();
     }
 
