@@ -14,7 +14,8 @@ spring:
         format_sql: true
 
 jwt:
-  secret: ${JWT_SECRET:local-dev-only-secret-key-please-override-min-32-bytes-long}
+  # 반드시 환경변수로 주입 (최소 32바이트). 미설정 시 애플리케이션 기동 실패 — 하드코딩 기본값 금지(보안).
+  secret: ${JWT_SECRET}
   access-token-expiration: 3600000 # 1시간 (ms)
   refresh-token-expiration: 1209600000 # 14일 (ms)
 
