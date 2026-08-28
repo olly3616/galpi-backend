@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -11,7 +12,6 @@ import com.galpi.galpibackend.domain.quote.entity.Quote;
 import com.galpi.galpibackend.domain.quote.entity.Visibility;
 import com.galpi.galpibackend.domain.schedule.entity.QuoteSchedule;
 import com.galpi.galpibackend.domain.schedule.entity.RepeatType;
-import com.galpi.galpibackend.domain.schedule.notification.NotificationSender;
 import com.galpi.galpibackend.domain.schedule.repository.QuoteScheduleRepository;
 import com.galpi.galpibackend.domain.work.entity.BookSource;
 import com.galpi.galpibackend.domain.work.entity.BookType;
@@ -35,12 +35,12 @@ class NotificationDispatchServiceTest {
     private QuoteScheduleRepository scheduleRepository;
 
     @Mock
-    private NotificationSender notificationSender;
+    private ScheduleDispatchExecutor dispatchExecutor;
 
     @InjectMocks
     private NotificationDispatchService dispatchService;
 
-    private QuoteSchedule schedule(RepeatType type, String daysOfWeek, LocalDateTime lastSentAt) {
+    private QuoteSchedule schedule(long id, RepeatType type, String daysOfWeek, LocalDateTime lastSentAt) {
         Work work = Work.builder().source(BookSource.API).type(BookType.NOVEL)
                 .title("데미안").author("헤르만 헤세").build();
         ReflectionTestUtils.setField(work, "id", 10L);
@@ -50,6 +50,7 @@ class NotificationDispatchServiceTest {
         QuoteSchedule schedule = QuoteSchedule.builder()
                 .userId(1L).quote(quote).sendTime(LocalTime.of(8, 0))
                 .repeatType(type).daysOfWeek(daysOfWeek).isActive(true).build();
+        ReflectionTestUtils.setField(schedule, "id", id);
         if (lastSentAt != null) {
             schedule.markSent(lastSentAt);
         }
@@ -59,13 +60,13 @@ class NotificationDispatchServiceTest {
     @Test
     @DisplayName("DAILY 알림은 요일과 무관하게 발송 대상이다")
     void isDue_daily() {
-        assertThat(dispatchService.isDue(schedule(RepeatType.DAILY, null, null), DayOfWeek.MONDAY)).isTrue();
+        assertThat(dispatchService.isDue(schedule(1L, RepeatType.DAILY, null, null), DayOfWeek.MONDAY)).isTrue();
     }
 
     @Test
     @DisplayName("WEEKLY 알림은 오늘 요일이 목록에 있을 때만 발송 대상이다")
     void isDue_weekly() {
-        QuoteSchedule s = schedule(RepeatType.WEEKLY, "MON,WED,FRI", null);
+        QuoteSchedule s = schedule(1L, RepeatType.WEEKLY, "MON,WED,FRI", null);
         assertThat(dispatchService.isDue(s, DayOfWeek.WEDNESDAY)).isTrue();
         assertThat(dispatchService.isDue(s, DayOfWeek.TUESDAY)).isFalse();
     }
@@ -73,37 +74,52 @@ class NotificationDispatchServiceTest {
     @Test
     @DisplayName("ONCE 알림은 아직 발송된 적 없을 때만 발송 대상이다")
     void isDue_once() {
-        assertThat(dispatchService.isDue(schedule(RepeatType.ONCE, null, null), DayOfWeek.MONDAY)).isTrue();
+        assertThat(dispatchService.isDue(schedule(1L, RepeatType.ONCE, null, null), DayOfWeek.MONDAY)).isTrue();
         assertThat(dispatchService.isDue(
-                schedule(RepeatType.ONCE, null, LocalDateTime.of(2026, 8, 27, 8, 0)), DayOfWeek.MONDAY)).isFalse();
+                schedule(1L, RepeatType.ONCE, null, LocalDateTime.of(2026, 8, 27, 8, 0)), DayOfWeek.MONDAY)).isFalse();
     }
 
     @Test
-    @DisplayName("발송 시각이 되면 알림을 보내고 last_sent_at을 갱신한다")
-    void dispatchDue_sendsAndMarks() {
+    @DisplayName("발송 시각이 되면 대상 알림을 건별 실행기로 위임한다")
+    void dispatchDue_delegatesToExecutor() {
         LocalDateTime now = LocalDateTime.of(2026, 8, 28, 8, 0); // 금요일
-        QuoteSchedule due = schedule(RepeatType.DAILY, null, null);
-        given(scheduleRepository.findByIsActiveTrueAndSendTime(LocalTime.of(8, 0)))
+        QuoteSchedule due = schedule(1L, RepeatType.DAILY, null, null);
+        given(scheduleRepository.findActiveBySendTimeWithQuote(LocalTime.of(8, 0)))
                 .willReturn(List.of(due));
 
-        int sent = dispatchService.dispatchDue(now);
+        int dispatched = dispatchService.dispatchDue(now);
 
-        assertThat(sent).isEqualTo(1);
-        verify(notificationSender).send(eq(1L), eq("데미안"), eq("새는 알에서..."), eq(100L));
-        assertThat(due.getLastSentAt()).isEqualTo(now);
+        assertThat(dispatched).isEqualTo(1);
+        verify(dispatchExecutor).dispatchOne(1L, now);
     }
 
     @Test
-    @DisplayName("오늘 이미 발송된 알림은 다시 보내지 않는다")
+    @DisplayName("오늘 이미 발송된 알림은 실행기로 위임하지 않는다")
     void dispatchDue_skipsAlreadySentToday() {
         LocalDateTime now = LocalDateTime.of(2026, 8, 28, 8, 0);
-        QuoteSchedule alreadySent = schedule(RepeatType.DAILY, null, LocalDateTime.of(2026, 8, 28, 8, 0));
-        given(scheduleRepository.findByIsActiveTrueAndSendTime(LocalTime.of(8, 0)))
+        QuoteSchedule alreadySent = schedule(1L, RepeatType.DAILY, null, LocalDateTime.of(2026, 8, 28, 8, 0));
+        given(scheduleRepository.findActiveBySendTimeWithQuote(LocalTime.of(8, 0)))
                 .willReturn(List.of(alreadySent));
 
-        int sent = dispatchService.dispatchDue(now);
+        int dispatched = dispatchService.dispatchDue(now);
 
-        assertThat(sent).isZero();
-        verify(notificationSender, never()).send(any(), any(), any(), any());
+        assertThat(dispatched).isZero();
+        verify(dispatchExecutor, never()).dispatchOne(any(), any());
+    }
+
+    @Test
+    @DisplayName("한 건 발송이 실패해도 나머지 발송은 계속된다")
+    void dispatchDue_continuesOnFailure() {
+        LocalDateTime now = LocalDateTime.of(2026, 8, 28, 8, 0);
+        QuoteSchedule a = schedule(1L, RepeatType.DAILY, null, null);
+        QuoteSchedule b = schedule(2L, RepeatType.DAILY, null, null);
+        given(scheduleRepository.findActiveBySendTimeWithQuote(LocalTime.of(8, 0)))
+                .willReturn(List.of(a, b));
+        willThrow(new RuntimeException("FCM 오류")).given(dispatchExecutor).dispatchOne(eq(1L), any());
+
+        int dispatched = dispatchService.dispatchDue(now);
+
+        assertThat(dispatched).isEqualTo(1); // b는 정상 발송
+        verify(dispatchExecutor).dispatchOne(2L, now);
     }
 }

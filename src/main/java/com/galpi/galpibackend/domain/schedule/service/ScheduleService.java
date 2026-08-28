@@ -15,6 +15,7 @@ import com.galpi.galpibackend.global.error.ErrorCode;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -54,7 +55,7 @@ public class ScheduleService {
 
     @Transactional(readOnly = true)
     public List<ScheduleWithQuoteResponse> getMySchedules(Long userId) {
-        return scheduleRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
+        return scheduleRepository.findByUserIdWithQuote(userId).stream()
                 .map(ScheduleWithQuoteResponse::from)
                 .toList();
     }
@@ -89,9 +90,20 @@ public class ScheduleService {
         return new DeleteScheduleResponse(true);
     }
 
+    private static final Set<String> VALID_DAYS = Set.of("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN");
+
     private void validateWeekly(RepeatType repeatType, String daysOfWeek) {
-        if (repeatType == RepeatType.WEEKLY && !StringUtils.hasText(daysOfWeek)) {
+        if (repeatType != RepeatType.WEEKLY) {
+            return;
+        }
+        if (!StringUtils.hasText(daysOfWeek)) {
             throw new CustomException(ErrorCode.VALIDATION_ERROR, "WEEKLY 반복은 daysOfWeek가 필요합니다.");
+        }
+        for (String day : daysOfWeek.split(",")) {
+            if (!VALID_DAYS.contains(day.trim().toUpperCase())) {
+                throw new CustomException(ErrorCode.VALIDATION_ERROR,
+                        "daysOfWeek는 MON,TUE,WED,THU,FRI,SAT,SUN 중 콤마로 구분해 지정해야 합니다.");
+            }
         }
     }
 

@@ -74,14 +74,14 @@ class FeedServiceTest {
         assertThat(response.items()).isEmpty();
         assertThat(response.hasNext()).isFalse();
         verify(quoteRepository, never())
-                .findByUserIdInAndVisibilityOrderByCreatedAtDesc(any(), any(), any());
+                .findFeedQuotesWithWork(any(), any(), any());
     }
 
     @Test
     @DisplayName("팔로우한 사람들의 FOLLOWERS 대사를 출처·작성자·좋아요 정보와 함께 반환한다")
     void getFeed_withQuotes() {
         given(followRepository.findFollowingIds(1L)).willReturn(List.of(2L));
-        given(quoteRepository.findByUserIdInAndVisibilityOrderByCreatedAtDesc(
+        given(quoteRepository.findFeedQuotesWithWork(
                 eq(List.of(2L)), eq(Visibility.FOLLOWERS), any()))
                 .willReturn(new PageImpl<>(List.of(quoteBy(100L, 2L)), PageRequest.of(0, 20), 1));
         given(userRepository.findAllById(List.of(2L))).willReturn(List.of(userWithId(2L, "책친구")));

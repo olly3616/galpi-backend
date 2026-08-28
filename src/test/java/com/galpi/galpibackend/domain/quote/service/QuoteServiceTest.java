@@ -13,6 +13,7 @@ import com.galpi.galpibackend.domain.quote.dto.UpdateQuoteRequest;
 import com.galpi.galpibackend.domain.quote.dto.WorkQuotesResponse;
 import com.galpi.galpibackend.domain.quote.entity.Quote;
 import com.galpi.galpibackend.domain.quote.entity.Visibility;
+import com.galpi.galpibackend.domain.like.repository.LikeRepository;
 import com.galpi.galpibackend.domain.quote.repository.QuoteRepository;
 import com.galpi.galpibackend.domain.schedule.repository.QuoteScheduleRepository;
 import com.galpi.galpibackend.domain.work.entity.BookSource;
@@ -42,6 +43,9 @@ class QuoteServiceTest {
 
     @Mock
     private QuoteScheduleRepository scheduleRepository;
+
+    @Mock
+    private LikeRepository likeRepository;
 
     @InjectMocks
     private QuoteService quoteService;
@@ -156,6 +160,8 @@ class QuoteServiceTest {
         var response = quoteService.deleteQuote(1L, 100L);
 
         assertThat(response.deleted()).isTrue();
+        verify(scheduleRepository).deleteByQuoteId(100L);
+        verify(likeRepository).deleteByQuoteId(100L);
         verify(quoteRepository).delete(quote);
     }
 

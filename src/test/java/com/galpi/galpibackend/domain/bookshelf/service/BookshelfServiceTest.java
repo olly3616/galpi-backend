@@ -84,7 +84,7 @@ class BookshelfServiceTest {
         AddBookshelfRequest request = new AddBookshelfRequest(
                 BookSource.MANUAL, "전지적 독자 시점", "싱숑", null,
                 null, null, BookType.WEBNOVEL);
-        given(workRepository.findByOwnerUserIdAndTitleAndAuthor(1L, "전지적 독자 시점", "싱숑"))
+        given(workRepository.findManualWork(1L, "전지적 독자 시점", "싱숑"))
                 .willReturn(Optional.empty());
         given(workRepository.save(any(Work.class))).willAnswer(invocation -> {
             Work saved = invocation.getArgument(0);
@@ -97,6 +97,22 @@ class BookshelfServiceTest {
 
         assertThat(response.workId()).isEqualTo(20L);
         verify(workRepository).save(any(Work.class));
+        verify(bookshelfRepository).save(any(Bookshelf.class));
+    }
+
+    @Test
+    @DisplayName("저자가 없는 MANUAL 책을 다시 추가하면 기존 Work를 재사용한다 (중복 생성 방지)")
+    void addBook_manualNullAuthorReusesWork() {
+        AddBookshelfRequest request = new AddBookshelfRequest(
+                BookSource.MANUAL, "무제 웹소설", null, null, null, null, BookType.WEBNOVEL);
+        Work existing = workWithId(30L);
+        given(workRepository.findManualWork(1L, "무제 웹소설", null)).willReturn(Optional.of(existing));
+        given(bookshelfRepository.existsByUserIdAndWorkId(1L, 30L)).willReturn(false);
+
+        AddBookshelfResponse response = bookshelfService.addBook(1L, request);
+
+        assertThat(response.workId()).isEqualTo(30L);
+        verify(workRepository, never()).save(any(Work.class));
         verify(bookshelfRepository).save(any(Bookshelf.class));
     }
 

@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -97,24 +98,39 @@ public class BookshelfService {
     /**
      * 책장에 담을 Work를 찾거나 없으면 생성한다.
      * - API 책: ISBN이 있으면 ISBN 기준으로 공용 Work 재사용
-     * - MANUAL 책: (등록자, 제목, 저자) 기준으로 사용자별 Work 재사용
+     * - MANUAL 책: (등록자, 제목, 저자) 기준으로 사용자별 Work 재사용 (저자 null도 매칭)
      */
     private Work resolveWork(Long userId, AddBookshelfRequest request) {
-        if (request.source() == BookSource.API && StringUtils.hasText(request.isbn())) {
-            return workRepository.findByIsbn(request.isbn())
-                    .orElseGet(() -> createWork(request, null));
+        String isbn = normalizeIsbn(request.isbn());
+
+        if (request.source() == BookSource.API && isbn != null) {
+            return workRepository.findByIsbn(isbn)
+                    .orElseGet(() -> createWorkHandlingIsbnRace(request, isbn, null));
         }
 
         if (request.source() == BookSource.MANUAL) {
-            return workRepository.findByOwnerUserIdAndTitleAndAuthor(userId, request.title(), request.author())
-                    .orElseGet(() -> createWork(request, userId));
+            return workRepository.findManualWork(userId, request.title(), request.author())
+                    .orElseGet(() -> createWork(request, isbn, userId));
         }
 
-        // API인데 ISBN이 없는 경우
-        return createWork(request, null);
+        // API인데 ISBN이 없는 경우 (공용, 재사용 판정 불가)
+        return createWork(request, isbn, null);
     }
 
-    private Work createWork(AddBookshelfRequest request, Long ownerUserId) {
+    /**
+     * ISBN 유니크 제약 하에서 동시 추가 경합을 처리한다.
+     * 저장이 유니크 위반으로 실패하면 다른 트랜잭션이 먼저 만든 Work를 재조회해 재사용한다.
+     */
+    private Work createWorkHandlingIsbnRace(AddBookshelfRequest request, String isbn, Long ownerUserId) {
+        try {
+            return createWork(request, isbn, ownerUserId);
+        } catch (DataIntegrityViolationException e) {
+            return workRepository.findByIsbn(isbn)
+                    .orElseThrow(() -> e);
+        }
+    }
+
+    private Work createWork(AddBookshelfRequest request, String isbn, Long ownerUserId) {
         return workRepository.save(Work.builder()
                 .source(request.source())
                 .type(request.type())
@@ -122,8 +138,13 @@ public class BookshelfService {
                 .author(request.author())
                 .publisher(request.publisher())
                 .coverUrl(request.coverUrl())
-                .isbn(request.isbn())
+                .isbn(isbn)
                 .ownerUserId(ownerUserId)
                 .build());
+    }
+
+    // 빈 문자열 ISBN은 null로 정규화한다. (빈 문자열 여러 건이 유니크 제약에 걸리지 않도록)
+    private String normalizeIsbn(String isbn) {
+        return StringUtils.hasText(isbn) ? isbn.trim() : null;
     }
 }
