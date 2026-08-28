@@ -14,6 +14,7 @@ import com.galpi.galpibackend.domain.quote.dto.WorkQuotesResponse;
 import com.galpi.galpibackend.domain.quote.entity.Quote;
 import com.galpi.galpibackend.domain.quote.entity.Visibility;
 import com.galpi.galpibackend.domain.quote.repository.QuoteRepository;
+import com.galpi.galpibackend.domain.schedule.repository.QuoteScheduleRepository;
 import com.galpi.galpibackend.domain.work.entity.BookSource;
 import com.galpi.galpibackend.domain.work.entity.BookType;
 import com.galpi.galpibackend.domain.work.entity.Work;
@@ -38,6 +39,9 @@ class QuoteServiceTest {
 
     @Mock
     private WorkRepository workRepository;
+
+    @Mock
+    private QuoteScheduleRepository scheduleRepository;
 
     @InjectMocks
     private QuoteService quoteService;
@@ -99,10 +103,12 @@ class QuoteServiceTest {
     @DisplayName("본인 대사는 상세 조회할 수 있다")
     void getQuote_ownSuccess() {
         given(quoteRepository.findById(100L)).willReturn(Optional.of(quoteWithId(100L, 1L)));
+        given(scheduleRepository.findByQuoteIdOrderByCreatedAtAsc(100L)).willReturn(List.of());
 
         QuoteResponse response = quoteService.getQuote(1L, 100L);
 
         assertThat(response.quoteId()).isEqualTo(100L);
+        assertThat(response.schedules()).isEmpty();
     }
 
     @Test
@@ -173,6 +179,7 @@ class QuoteServiceTest {
         given(workRepository.findById(10L)).willReturn(Optional.of(workWithId(10L)));
         given(quoteRepository.findByUserIdAndWorkIdOrderByCreatedAtDesc(1L, 10L))
                 .willReturn(List.of(quoteWithId(100L, 1L)));
+        given(scheduleRepository.findQuoteIdsWithScheduleIn(List.of(100L))).willReturn(List.of());
 
         WorkQuotesResponse response = quoteService.getWorkQuotes(1L, 10L);
 
