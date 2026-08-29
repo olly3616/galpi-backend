@@ -3,14 +3,17 @@ package com.galpi.galpibackend.domain.user.service;
 import com.galpi.galpibackend.domain.follow.entity.Follow;
 import com.galpi.galpibackend.domain.follow.repository.FollowRepository;
 import com.galpi.galpibackend.domain.user.dto.FollowResponse;
-import com.galpi.galpibackend.domain.user.dto.UserSearchResponse;
-import com.galpi.galpibackend.domain.user.dto.UserSearchResponse.UserSearchItem;
+import com.galpi.galpibackend.domain.user.dto.UserSearchItem;
 import com.galpi.galpibackend.domain.user.entity.User;
 import com.galpi.galpibackend.domain.user.repository.UserRepository;
 import com.galpi.galpibackend.global.error.CustomException;
 import com.galpi.galpibackend.global.error.ErrorCode;
+import com.galpi.galpibackend.global.web.PageResponse;
 import java.util.List;
 import java.util.Set;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,8 +29,10 @@ public class FollowService {
     }
 
     @Transactional(readOnly = true)
-    public UserSearchResponse searchUsers(Long userId, String query) {
-        List<User> users = userRepository.searchByNickname(escapeLike(query), userId);
+    public PageResponse<UserSearchItem> searchUsers(Long userId, String query, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<User> userPage = userRepository.searchByNickname(escapeLike(query), userId, pageable);
+        List<User> users = userPage.getContent();
 
         List<Long> userIds = users.stream().map(User::getId).toList();
         Set<Long> followingIds = userIds.isEmpty()
@@ -42,7 +47,7 @@ public class FollowService {
                         followingIds.contains(user.getId())))
                 .toList();
 
-        return new UserSearchResponse(items);
+        return PageResponse.from(userPage, items);
     }
 
     /**

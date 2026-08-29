@@ -1,7 +1,6 @@
 package com.galpi.galpibackend.domain.quote.service;
 
 import com.galpi.galpibackend.domain.quote.dto.CreateQuoteRequest;
-import com.galpi.galpibackend.domain.quote.dto.DeleteQuoteResponse;
 import com.galpi.galpibackend.domain.quote.dto.QuoteResponse;
 import com.galpi.galpibackend.domain.quote.dto.UpdateQuoteRequest;
 import com.galpi.galpibackend.domain.quote.dto.WorkQuotesResponse;
@@ -17,8 +16,13 @@ import com.galpi.galpibackend.domain.work.entity.Work;
 import com.galpi.galpibackend.domain.work.repository.WorkRepository;
 import com.galpi.galpibackend.global.error.CustomException;
 import com.galpi.galpibackend.global.error.ErrorCode;
+import com.galpi.galpibackend.global.web.PageResponse;
+import com.galpi.galpibackend.global.web.SuccessResponse;
 import java.util.List;
 import java.util.Set;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -73,21 +77,23 @@ public class QuoteService {
     }
 
     @Transactional(readOnly = true)
-    public WorkQuotesResponse getWorkQuotes(Long userId, Long workId) {
+    public WorkQuotesResponse getWorkQuotes(Long userId, Long workId, int page, int size) {
         Work work = workRepository.findById(workId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
 
-        List<Quote> quoteList = quoteRepository.findByUserIdAndWorkIdOrderByCreatedAtDesc(userId, workId);
-        List<Long> quoteIds = quoteList.stream().map(Quote::getId).toList();
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Quote> quotePage = quoteRepository
+                .findByUserIdAndWorkIdOrderByCreatedAtDesc(userId, workId, pageable);
+        List<Long> quoteIds = quotePage.getContent().stream().map(Quote::getId).toList();
         Set<Long> scheduledQuoteIds = quoteIds.isEmpty()
                 ? Set.of()
                 : Set.copyOf(scheduleRepository.findQuoteIdsWithScheduleIn(quoteIds));
 
-        List<QuoteSummary> quotes = quoteList.stream()
+        List<QuoteSummary> items = quotePage.getContent().stream()
                 .map(quote -> QuoteSummary.from(quote, scheduledQuoteIds.contains(quote.getId())))
                 .toList();
 
-        return new WorkQuotesResponse(WorkBrief.from(work), quotes);
+        return new WorkQuotesResponse(WorkBrief.from(work), PageResponse.from(quotePage, items));
     }
 
     @Transactional
@@ -114,7 +120,7 @@ public class QuoteService {
     }
 
     @Transactional
-    public DeleteQuoteResponse deleteQuote(Long userId, Long quoteId) {
+    public SuccessResponse deleteQuote(Long userId, Long quoteId) {
         Quote quote = findQuote(quoteId);
         if (!quote.isOwnedBy(userId)) {
             throw new CustomException(ErrorCode.FORBIDDEN);
@@ -123,7 +129,7 @@ public class QuoteService {
         scheduleRepository.deleteByQuoteId(quoteId);
         likeRepository.deleteByQuoteId(quoteId);
         quoteRepository.delete(quote);
-        return new DeleteQuoteResponse(true);
+        return SuccessResponse.ok();
     }
 
     private Quote findQuote(Long quoteId) {

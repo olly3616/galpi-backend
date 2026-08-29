@@ -5,14 +5,19 @@ import com.galpi.galpibackend.domain.quote.service.QuoteService;
 import com.galpi.galpibackend.domain.work.dto.WorkResponse;
 import com.galpi.galpibackend.domain.work.service.WorkService;
 import com.galpi.galpibackend.global.security.CurrentUserId;
+import com.galpi.galpibackend.global.web.ApiPaging;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/works")
+@Validated
 public class WorkController {
 
     private final WorkService workService;
@@ -30,9 +35,11 @@ public class WorkController {
     }
 
     @GetMapping("/{id}/quotes")
-    public ResponseEntity<WorkQuotesResponse> getWorkQuotes(@CurrentUserId Long userId,
-                                                            @PathVariable Long id) {
-        WorkQuotesResponse response = quoteService.getWorkQuotes(userId, id);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<WorkQuotesResponse> getWorkQuotes(
+            @CurrentUserId Long userId,
+            @PathVariable Long id,
+            @RequestParam(defaultValue = ApiPaging.DEFAULT_PAGE) @Min(0) int page,
+            @RequestParam(defaultValue = ApiPaging.DEFAULT_SIZE) @Min(1) int size) {
+        return ResponseEntity.ok(quoteService.getWorkQuotes(userId, id, page, size));
     }
 }

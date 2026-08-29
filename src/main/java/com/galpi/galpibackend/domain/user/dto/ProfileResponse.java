@@ -1,7 +1,6 @@
 package com.galpi.galpibackend.domain.user.dto;
 
-import com.galpi.galpibackend.domain.work.dto.WorkSource;
-import java.util.List;
+import com.galpi.galpibackend.global.web.PageResponse;
 
 public record ProfileResponse(
         Long userId,
@@ -10,14 +9,6 @@ public record ProfileResponse(
         long followerCount,
         long followingCount,
         boolean isFollowing,
-        List<ProfileQuote> quotes
+        PageResponse<ProfileQuote> quotes
 ) {
-
-    public record ProfileQuote(
-            Long quoteId,
-            String content,
-            String characterName,
-            WorkSource work    // 출처 — 필수 (저작권)
-    ) {
-    }
 }

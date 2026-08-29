@@ -7,7 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.galpi.galpibackend.domain.devicetoken.dto.DeviceTokenRequest;
-import com.galpi.galpibackend.domain.devicetoken.dto.DeviceTokenResponse;
+import com.galpi.galpibackend.global.web.SuccessResponse;
 import com.galpi.galpibackend.domain.devicetoken.entity.DeviceToken;
 import com.galpi.galpibackend.domain.devicetoken.entity.Platform;
 import com.galpi.galpibackend.domain.devicetoken.repository.DeviceTokenRepository;
@@ -35,7 +35,7 @@ class DeviceTokenServiceTest {
     void register_newToken() {
         given(deviceTokenRepository.findByToken(request.token())).willReturn(Optional.empty());
 
-        DeviceTokenResponse response = deviceTokenService.register(1L, request);
+        SuccessResponse response = deviceTokenService.register(1L, request);
 
         assertThat(response.success()).isTrue();
         verify(deviceTokenRepository).save(any(DeviceToken.class));
@@ -51,7 +51,7 @@ class DeviceTokenServiceTest {
                 .build();
         given(deviceTokenRepository.findByToken(request.token())).willReturn(Optional.of(existing));
 
-        DeviceTokenResponse response = deviceTokenService.register(1L, request);
+        SuccessResponse response = deviceTokenService.register(1L, request);
 
         assertThat(response.success()).isTrue();
         assertThat(existing.getUserId()).isEqualTo(1L);

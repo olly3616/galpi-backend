@@ -3,6 +3,7 @@ package com.galpi.galpibackend.domain.quote.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -30,6 +31,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -159,7 +161,7 @@ class QuoteServiceTest {
 
         var response = quoteService.deleteQuote(1L, 100L);
 
-        assertThat(response.deleted()).isTrue();
+        assertThat(response.success()).isTrue();
         verify(scheduleRepository).deleteByQuoteId(100L);
         verify(likeRepository).deleteByQuoteId(100L);
         verify(quoteRepository).delete(quote);
@@ -183,15 +185,15 @@ class QuoteServiceTest {
     @DisplayName("책의 내 대사 모아보기는 출처(work)와 대사 목록을 반환한다")
     void getWorkQuotes_success() {
         given(workRepository.findById(10L)).willReturn(Optional.of(workWithId(10L)));
-        given(quoteRepository.findByUserIdAndWorkIdOrderByCreatedAtDesc(1L, 10L))
-                .willReturn(List.of(quoteWithId(100L, 1L)));
+        given(quoteRepository.findByUserIdAndWorkIdOrderByCreatedAtDesc(eq(1L), eq(10L), any()))
+                .willReturn(new PageImpl<>(List.of(quoteWithId(100L, 1L))));
         given(scheduleRepository.findQuoteIdsWithScheduleIn(List.of(100L))).willReturn(List.of());
 
-        WorkQuotesResponse response = quoteService.getWorkQuotes(1L, 10L);
+        WorkQuotesResponse response = quoteService.getWorkQuotes(1L, 10L, 0, 20);
 
         assertThat(response.work().workId()).isEqualTo(10L);
-        assertThat(response.quotes()).hasSize(1);
-        assertThat(response.quotes().get(0).quoteId()).isEqualTo(100L);
-        assertThat(response.quotes().get(0).hasSchedule()).isFalse();
+        assertThat(response.quotes().items()).hasSize(1);
+        assertThat(response.quotes().items().get(0).quoteId()).isEqualTo(100L);
+        assertThat(response.quotes().items().get(0).hasSchedule()).isFalse();
     }
 }

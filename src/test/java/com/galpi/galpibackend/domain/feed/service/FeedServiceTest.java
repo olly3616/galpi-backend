@@ -7,7 +7,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-import com.galpi.galpibackend.domain.feed.dto.FeedResponse;
+import com.galpi.galpibackend.domain.feed.dto.FeedItem;
+import com.galpi.galpibackend.global.web.PageResponse;
 import com.galpi.galpibackend.domain.follow.repository.FollowRepository;
 import com.galpi.galpibackend.domain.like.repository.LikeRepository;
 import com.galpi.galpibackend.domain.like.repository.LikeRepository.QuoteLikeCount;
@@ -69,7 +70,7 @@ class FeedServiceTest {
     void getFeed_noFollowing() {
         given(followRepository.findFollowingIds(1L)).willReturn(List.of());
 
-        FeedResponse response = feedService.getFeed(1L, 0, 20);
+        PageResponse<FeedItem> response = feedService.getFeed(1L, 0, 20);
 
         assertThat(response.items()).isEmpty();
         assertThat(response.hasNext()).isFalse();
@@ -99,10 +100,10 @@ class FeedServiceTest {
         given(likeRepository.countByQuoteIdIn(List.of(100L))).willReturn(List.of(likeCount));
         given(likeRepository.findLikedQuoteIdsIn(1L, List.of(100L))).willReturn(List.of(100L));
 
-        FeedResponse response = feedService.getFeed(1L, 0, 20);
+        PageResponse<FeedItem> response = feedService.getFeed(1L, 0, 20);
 
         assertThat(response.items()).hasSize(1);
-        FeedResponse.FeedItem item = response.items().get(0);
+        FeedItem item = response.items().get(0);
         assertThat(item.quoteId()).isEqualTo(100L);
         assertThat(item.author().nickname()).isEqualTo("책친구");
         assertThat(item.work().title()).isEqualTo("데미안");

@@ -3,11 +3,11 @@ package com.galpi.galpibackend.domain.auth.controller;
 import com.galpi.galpibackend.domain.auth.dto.AuthResponse;
 import com.galpi.galpibackend.domain.auth.dto.LoginRequest;
 import com.galpi.galpibackend.domain.auth.dto.LogoutRequest;
-import com.galpi.galpibackend.domain.auth.dto.LogoutResponse;
 import com.galpi.galpibackend.domain.auth.dto.RefreshRequest;
 import com.galpi.galpibackend.domain.auth.dto.RefreshResponse;
 import com.galpi.galpibackend.domain.auth.dto.SignupRequest;
 import com.galpi.galpibackend.domain.auth.service.AuthService;
+import com.galpi.galpibackend.global.web.SuccessResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -45,8 +45,7 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<LogoutResponse> logout(@Valid @RequestBody LogoutRequest request) {
-        LogoutResponse response = authService.logout(request.refreshToken());
-        return ResponseEntity.ok(response);
+    public ResponseEntity<SuccessResponse> logout(@Valid @RequestBody LogoutRequest request) {
+        return ResponseEntity.ok(authService.logout(request.refreshToken()));
     }
 }

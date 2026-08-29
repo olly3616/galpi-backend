@@ -10,7 +10,8 @@ import static org.mockito.Mockito.verify;
 
 import com.galpi.galpibackend.domain.bookshelf.dto.AddBookshelfRequest;
 import com.galpi.galpibackend.domain.bookshelf.dto.AddBookshelfResponse;
-import com.galpi.galpibackend.domain.bookshelf.dto.BookshelfResponse;
+import com.galpi.galpibackend.domain.bookshelf.dto.BookshelfItem;
+import com.galpi.galpibackend.global.web.PageResponse;
 import com.galpi.galpibackend.domain.bookshelf.entity.Bookshelf;
 import com.galpi.galpibackend.domain.bookshelf.repository.BookshelfRepository;
 import com.galpi.galpibackend.domain.quote.repository.QuoteRepository;
@@ -73,7 +74,6 @@ class BookshelfServiceTest {
         AddBookshelfResponse response = bookshelfService.addBook(1L, request);
 
         assertThat(response.workId()).isEqualTo(10L);
-        assertThat(response.addedToShelf()).isTrue();
         verify(workRepository, never()).save(any(Work.class));
         verify(bookshelfRepository).save(any(Bookshelf.class));
     }
@@ -154,7 +154,7 @@ class BookshelfServiceTest {
         };
         given(quoteRepository.countByUserIdAndWorkIdIn(eq(1L), any())).willReturn(List.of(count));
 
-        BookshelfResponse response = bookshelfService.getMyBookshelf(1L, 0, 20);
+        PageResponse<BookshelfItem> response = bookshelfService.getMyBookshelf(1L, 0, 20);
 
         assertThat(response.items()).hasSize(1);
         assertThat(response.items().get(0).workId()).isEqualTo(10L);
@@ -182,7 +182,7 @@ class BookshelfServiceTest {
 
         var response = bookshelfService.removeBook(1L, 10L);
 
-        assertThat(response.removed()).isTrue();
+        assertThat(response.success()).isTrue();
         verify(bookshelfRepository).delete(shelf);
     }
 }

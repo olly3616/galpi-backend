@@ -1,10 +1,10 @@
 package com.galpi.galpibackend.domain.feed.service;
 
-import com.galpi.galpibackend.domain.feed.dto.FeedResponse;
-import com.galpi.galpibackend.domain.feed.dto.FeedResponse.Author;
-import com.galpi.galpibackend.domain.feed.dto.FeedResponse.FeedItem;
+import com.galpi.galpibackend.domain.feed.dto.FeedItem;
+import com.galpi.galpibackend.domain.feed.dto.FeedItem.Author;
 import com.galpi.galpibackend.domain.work.dto.WorkSource;
 import com.galpi.galpibackend.domain.follow.repository.FollowRepository;
+import com.galpi.galpibackend.global.web.PageResponse;
 import com.galpi.galpibackend.domain.like.repository.LikeRepository;
 import com.galpi.galpibackend.domain.like.repository.LikeRepository.QuoteLikeCount;
 import com.galpi.galpibackend.domain.quote.entity.Quote;
@@ -39,10 +39,10 @@ public class FeedService {
     }
 
     @Transactional(readOnly = true)
-    public FeedResponse getFeed(Long userId, int page, int size) {
+    public PageResponse<FeedItem> getFeed(Long userId, int page, int size) {
         List<Long> followingIds = followRepository.findFollowingIds(userId);
         if (followingIds.isEmpty()) {
-            return new FeedResponse(List.of(), page, false);
+            return PageResponse.of(List.of(), page, false);
         }
 
         Pageable pageable = PageRequest.of(page, size);
@@ -50,7 +50,7 @@ public class FeedService {
                 followingIds, Visibility.FOLLOWERS, pageable);
         List<Quote> quotes = quotePage.getContent();
         if (quotes.isEmpty()) {
-            return new FeedResponse(List.of(), page, quotePage.hasNext());
+            return PageResponse.from(quotePage, List.of());
         }
 
         List<Long> quoteIds = quotes.stream().map(Quote::getId).toList();
@@ -69,7 +69,7 @@ public class FeedService {
                         likedQuoteIds.contains(quote.getId())))
                 .toList();
 
-        return new FeedResponse(items, page, quotePage.hasNext());
+        return PageResponse.from(quotePage, items);
     }
 
     private Map<Long, String> loadNicknames(List<Quote> quotes) {

@@ -2,7 +2,6 @@ package com.galpi.galpibackend.domain.auth.service;
 
 import com.galpi.galpibackend.domain.auth.dto.AuthResponse;
 import com.galpi.galpibackend.domain.auth.dto.LoginRequest;
-import com.galpi.galpibackend.domain.auth.dto.LogoutResponse;
 import com.galpi.galpibackend.domain.auth.dto.RefreshRequest;
 import com.galpi.galpibackend.domain.auth.dto.RefreshResponse;
 import com.galpi.galpibackend.domain.auth.dto.SignupRequest;
@@ -15,6 +14,7 @@ import com.galpi.galpibackend.global.error.ErrorCode;
 import com.galpi.galpibackend.global.jwt.JwtProperties;
 import com.galpi.galpibackend.global.jwt.JwtProvider;
 import com.galpi.galpibackend.global.jwt.TokenHasher;
+import com.galpi.galpibackend.global.web.SuccessResponse;
 import java.time.LocalDateTime;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -97,12 +97,12 @@ public class AuthService {
     }
 
     @Transactional
-    public LogoutResponse logout(String refreshToken) {
+    public SuccessResponse logout(String refreshToken) {
         // 저장된 리프레시 토큰을 폐기한다. 이미 없거나 형식이 틀려도 멱등하게 성공 처리.
         if (refreshToken != null && !refreshToken.isBlank()) {
             refreshTokenRepository.deleteByTokenHash(TokenHasher.sha256Hex(refreshToken));
         }
-        return new LogoutResponse(true);
+        return SuccessResponse.ok();
     }
 
     private TokenPair issueTokens(Long userId) {

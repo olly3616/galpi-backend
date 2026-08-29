@@ -1,9 +1,10 @@
 package com.galpi.galpibackend.domain.feed.controller;
 
-import com.galpi.galpibackend.domain.feed.dto.FeedResponse;
+import com.galpi.galpibackend.domain.feed.dto.FeedItem;
 import com.galpi.galpibackend.domain.feed.service.FeedService;
 import com.galpi.galpibackend.global.security.CurrentUserId;
 import com.galpi.galpibackend.global.web.ApiPaging;
+import com.galpi.galpibackend.global.web.PageResponse;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -24,7 +25,7 @@ public class FeedController {
     }
 
     @GetMapping
-    public ResponseEntity<FeedResponse> getFeed(
+    public ResponseEntity<PageResponse<FeedItem>> getFeed(
             @CurrentUserId Long userId,
             @RequestParam(defaultValue = ApiPaging.DEFAULT_PAGE) @Min(0) int page,
             @RequestParam(defaultValue = ApiPaging.DEFAULT_SIZE) @Min(1) int size) {
