@@ -6,6 +6,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import org.springframework.stereotype.Component;
 
@@ -56,6 +57,9 @@ public class JwtProvider {
         return Jwts.builder()
                 .subject(String.valueOf(userId))
                 .claim(TOKEN_TYPE_CLAIM, tokenType)
+                // jti(고유 식별자)를 넣어 같은 초에 발급된 토큰끼리도 항상 다르게 만든다.
+                // (리프레시 토큰 회전 시 이전/새 토큰이 동일해지는 문제 방지)
+                .id(UUID.randomUUID().toString())
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(key)
