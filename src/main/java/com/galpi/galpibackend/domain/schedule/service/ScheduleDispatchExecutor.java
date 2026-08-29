@@ -43,5 +43,9 @@ public class ScheduleDispatchExecutor {
                 quote.getContent(),
                 quote.getId());
         schedule.markSent(now);
+        // 한 번만(ONCE) 알림은 발송 후 비활성화해 매일 재조회되지 않게 한다.
+        if (schedule.isOnce()) {
+            schedule.deactivate();
+        }
     }
 }

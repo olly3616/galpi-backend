@@ -1,5 +1,6 @@
 package com.galpi.galpibackend.domain.user.dto;
 
+import com.galpi.galpibackend.domain.work.dto.WorkSource;
 import java.util.List;
 
 public record ProfileResponse(
@@ -16,14 +17,7 @@ public record ProfileResponse(
             Long quoteId,
             String content,
             String characterName,
-            WorkRef work
-    ) {
-    }
-
-    // 출처 표기 (저작권) — 공유 대사에는 작품 제목·작가가 반드시 포함
-    public record WorkRef(
-            String title,
-            String author
+            WorkSource work    // 출처 — 필수 (저작권)
     ) {
     }
 }

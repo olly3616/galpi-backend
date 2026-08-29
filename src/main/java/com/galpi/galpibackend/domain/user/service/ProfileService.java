@@ -6,8 +6,8 @@ import com.galpi.galpibackend.domain.quote.entity.Visibility;
 import com.galpi.galpibackend.domain.quote.repository.QuoteRepository;
 import com.galpi.galpibackend.domain.user.dto.ProfileResponse;
 import com.galpi.galpibackend.domain.user.dto.ProfileResponse.ProfileQuote;
-import com.galpi.galpibackend.domain.user.dto.ProfileResponse.WorkRef;
 import com.galpi.galpibackend.domain.user.entity.User;
+import com.galpi.galpibackend.domain.work.dto.WorkSource;
 import com.galpi.galpibackend.domain.user.repository.UserRepository;
 import com.galpi.galpibackend.global.error.CustomException;
 import com.galpi.galpibackend.global.error.ErrorCode;
@@ -65,7 +65,7 @@ public class ProfileService {
                 quote.getId(),
                 quote.getContent(),
                 quote.getCharacterName(),
-                new WorkRef(quote.getWork().getTitle(), quote.getWork().getAuthor())
+                WorkSource.from(quote.getWork())
         );
     }
 }

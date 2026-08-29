@@ -44,7 +44,7 @@ public class ScheduleController {
     @PatchMapping("/api/schedules/{id}")
     public ResponseEntity<ScheduleResponse> updateSchedule(@CurrentUserId Long userId,
                                                            @PathVariable Long id,
-                                                           @RequestBody UpdateScheduleRequest request) {
+                                                           @Valid @RequestBody UpdateScheduleRequest request) {
         ScheduleResponse response = scheduleService.updateSchedule(userId, id, request);
         return ResponseEntity.ok(response);
     }

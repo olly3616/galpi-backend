@@ -40,6 +40,10 @@ class ScheduleDispatchExecutorTest {
     private ScheduleDispatchExecutor executor;
 
     private QuoteSchedule schedule(LocalDateTime lastSentAt) {
+        return schedule(RepeatType.DAILY, lastSentAt);
+    }
+
+    private QuoteSchedule schedule(RepeatType repeatType, LocalDateTime lastSentAt) {
         Work work = Work.builder().source(BookSource.API).type(BookType.NOVEL)
                 .title("데미안").author("헤르만 헤세").build();
         ReflectionTestUtils.setField(work, "id", 10L);
@@ -48,7 +52,7 @@ class ScheduleDispatchExecutorTest {
         ReflectionTestUtils.setField(quote, "id", 100L);
         QuoteSchedule schedule = QuoteSchedule.builder()
                 .userId(1L).quote(quote).sendTime(LocalTime.of(8, 0))
-                .repeatType(RepeatType.DAILY).isActive(true).build();
+                .repeatType(repeatType).isActive(true).build();
         ReflectionTestUtils.setField(schedule, "id", 1L);
         if (lastSentAt != null) {
             schedule.markSent(lastSentAt);
@@ -79,6 +83,19 @@ class ScheduleDispatchExecutorTest {
         executor.dispatchOne(1L, now);
 
         verify(notificationSender, never()).send(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("ONCE 알림은 발송 후 비활성화된다")
+    void dispatchOne_onceDeactivates() {
+        LocalDateTime now = LocalDateTime.of(2026, 8, 28, 8, 0);
+        QuoteSchedule s = schedule(RepeatType.ONCE, null);
+        given(scheduleRepository.findById(1L)).willReturn(Optional.of(s));
+
+        executor.dispatchOne(1L, now);
+
+        verify(notificationSender).send(any(), any(), any(), any());
+        assertThat(s.isActive()).isFalse();
     }
 
     @Test

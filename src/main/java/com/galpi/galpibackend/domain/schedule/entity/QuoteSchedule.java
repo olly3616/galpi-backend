@@ -86,4 +86,12 @@ public class QuoteSchedule extends BaseTimeEntity {
     public void markSent(LocalDateTime sentAt) {
         this.lastSentAt = sentAt;
     }
+
+    public void deactivate() {
+        this.isActive = false;
+    }
+
+    public boolean isOnce() {
+        return this.repeatType == RepeatType.ONCE;
+    }
 }

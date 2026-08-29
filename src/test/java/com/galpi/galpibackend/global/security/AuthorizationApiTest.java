@@ -79,6 +79,18 @@ class AuthorizationApiTest {
     }
 
     @Test
+    @DisplayName("페이지 파라미터가 음수면 500이 아니라 400과 VALIDATION_ERROR를 반환한다")
+    void negativePage_400() throws Exception {
+        User user = saveUser("paging@galpi.com", "페이징");
+        String accessToken = jwtProvider.createAccessToken(user.getId());
+
+        mockMvc.perform(get("/api/bookshelf/me?page=-1")
+                        .header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
     @DisplayName("남의 대사를 조회하면 403과 FORBIDDEN을 반환한다")
     void othersQuote_403() throws Exception {
         User owner = saveUser("owner@galpi.com", "주인");
