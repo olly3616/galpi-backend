@@ -107,15 +107,16 @@ class LikeServiceTest {
     }
 
     @Test
-    @DisplayName("이미 좋아요한 상태면 중복 저장하지 않는다")
+    @DisplayName("이미 좋아요한 대사에 다시 좋아요하면 ALREADY_LIKED 예외를 던진다")
     void like_alreadyLiked() {
         given(quoteRepository.findById(100L)).willReturn(Optional.of(quote(100L, 1L, Visibility.PRIVATE)));
         given(likeRepository.existsByUserIdAndQuoteId(1L, 100L)).willReturn(true);
-        given(likeRepository.countByQuoteId(100L)).willReturn(4L);
 
-        LikeResponse response = likeService.like(1L, 100L);
+        assertThatThrownBy(() -> likeService.like(1L, 100L))
+                .isInstanceOf(CustomException.class)
+                .extracting(e -> ((CustomException) e).getErrorCode())
+                .isEqualTo(ErrorCode.ALREADY_LIKED);
 
-        assertThat(response.liked()).isTrue();
         verify(likeRepository, never()).save(any(Like.class));
     }
 

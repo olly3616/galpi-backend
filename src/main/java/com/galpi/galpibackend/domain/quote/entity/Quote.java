@@ -13,20 +13,29 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 @Getter
 @Entity
 @Table(name = "quotes")
+// 소프트 딜리트: delete()를 UPDATE로 바꾸고(@SQLDelete), 조회 시 삭제된 행을 자동 제외(@SQLRestriction).
+@SQLDelete(sql = "UPDATE quotes SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
+@SQLRestriction("deleted_at IS NULL")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Quote extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    // 소프트 딜리트 시각. null이면 살아있는 대사.
+    private LocalDateTime deletedAt;
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
