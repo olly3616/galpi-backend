@@ -6,8 +6,8 @@ import static org.mockito.Mockito.verify;
 
 import com.galpi.galpibackend.domain.book.client.KakaoBookClient;
 import com.galpi.galpibackend.domain.book.client.KakaoBookResponse;
-import com.galpi.galpibackend.domain.book.dto.BookSearchResponse;
-import com.galpi.galpibackend.domain.book.dto.BookSearchResponse.BookItem;
+import com.galpi.galpibackend.domain.book.dto.BookItem;
+import com.galpi.galpibackend.global.web.PageResponse;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -41,7 +41,7 @@ class BookSearchServiceTest {
         );
         given(kakaoBookClient.search("데미안", 1, 20)).willReturn(kakaoResponse);
 
-        BookSearchResponse response = bookSearchService.search("데미안", 0, 20);
+        PageResponse<BookItem> response = bookSearchService.search("데미안", 0, 20);
 
         // 카카오에는 page+1(=1)로 요청했는지 확인
         verify(kakaoBookClient).search("데미안", 1, 20);
@@ -69,7 +69,7 @@ class BookSearchServiceTest {
         );
         given(kakaoBookClient.search("소설", 2, 10)).willReturn(kakaoResponse);
 
-        BookSearchResponse response = bookSearchService.search("소설", 1, 10);
+        PageResponse<BookItem> response = bookSearchService.search("소설", 1, 10);
 
         assertThat(response.hasNext()).isTrue();
         assertThat(response.items()).isEmpty();

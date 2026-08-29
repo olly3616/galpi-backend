@@ -2,8 +2,8 @@ package com.galpi.galpibackend.domain.book.service;
 
 import com.galpi.galpibackend.domain.book.client.KakaoBookClient;
 import com.galpi.galpibackend.domain.book.client.KakaoBookResponse;
-import com.galpi.galpibackend.domain.book.dto.BookSearchResponse;
-import com.galpi.galpibackend.domain.book.dto.BookSearchResponse.BookItem;
+import com.galpi.galpibackend.domain.book.dto.BookItem;
+import com.galpi.galpibackend.global.web.PageResponse;
 import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -17,7 +17,7 @@ public class BookSearchService {
         this.kakaoBookClient = kakaoBookClient;
     }
 
-    public BookSearchResponse search(String query, int page, int size) {
+    public PageResponse<BookItem> search(String query, int page, int size) {
         // 우리 API는 0-based, 카카오는 1-based
         KakaoBookResponse kakaoResponse = kakaoBookClient.search(query, page + 1, size);
 
@@ -26,7 +26,7 @@ public class BookSearchService {
                 .toList();
 
         boolean hasNext = !kakaoResponse.meta().isEnd();
-        return new BookSearchResponse(items, page, hasNext);
+        return PageResponse.of(items, page, hasNext);
     }
 
     private BookItem toBookItem(KakaoBookResponse.Document doc) {

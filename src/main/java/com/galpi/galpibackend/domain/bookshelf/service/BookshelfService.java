@@ -2,9 +2,7 @@ package com.galpi.galpibackend.domain.bookshelf.service;
 
 import com.galpi.galpibackend.domain.bookshelf.dto.AddBookshelfRequest;
 import com.galpi.galpibackend.domain.bookshelf.dto.AddBookshelfResponse;
-import com.galpi.galpibackend.domain.bookshelf.dto.BookshelfResponse;
-import com.galpi.galpibackend.domain.bookshelf.dto.BookshelfResponse.BookshelfItem;
-import com.galpi.galpibackend.domain.bookshelf.dto.RemoveBookshelfResponse;
+import com.galpi.galpibackend.domain.bookshelf.dto.BookshelfItem;
 import com.galpi.galpibackend.domain.bookshelf.entity.Bookshelf;
 import com.galpi.galpibackend.domain.bookshelf.repository.BookshelfRepository;
 import com.galpi.galpibackend.domain.quote.repository.QuoteRepository;
@@ -14,9 +12,10 @@ import com.galpi.galpibackend.domain.work.entity.Work;
 import com.galpi.galpibackend.domain.work.repository.WorkRepository;
 import com.galpi.galpibackend.global.error.CustomException;
 import com.galpi.galpibackend.global.error.ErrorCode;
+import com.galpi.galpibackend.global.web.PageResponse;
+import com.galpi.galpibackend.global.web.SuccessResponse;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -53,11 +52,11 @@ public class BookshelfService {
                 .work(work)
                 .build());
 
-        return new AddBookshelfResponse(work.getId(), true);
+        return new AddBookshelfResponse(work.getId());
     }
 
     @Transactional(readOnly = true)
-    public BookshelfResponse getMyBookshelf(Long userId, int page, int size) {
+    public PageResponse<BookshelfItem> getMyBookshelf(Long userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Bookshelf> shelfPage = bookshelfRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
 
@@ -75,7 +74,7 @@ public class BookshelfService {
                 })
                 .toList();
 
-        return new BookshelfResponse(items, page, shelfPage.hasNext());
+        return PageResponse.from(shelfPage, items);
     }
 
     private Map<Long, Long> countQuotesByWork(Long userId, List<Long> workIds) {
@@ -87,12 +86,12 @@ public class BookshelfService {
     }
 
     @Transactional
-    public RemoveBookshelfResponse removeBook(Long userId, Long workId) {
+    public SuccessResponse removeBook(Long userId, Long workId) {
         Bookshelf shelf = bookshelfRepository.findByUserIdAndWorkId(userId, workId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
 
         bookshelfRepository.delete(shelf);
-        return new RemoveBookshelfResponse(true);
+        return SuccessResponse.ok();
     }
 
     /**

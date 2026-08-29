@@ -1,11 +1,11 @@
 package com.galpi.galpibackend.domain.quote.controller;
 
 import com.galpi.galpibackend.domain.quote.dto.CreateQuoteRequest;
-import com.galpi.galpibackend.domain.quote.dto.DeleteQuoteResponse;
 import com.galpi.galpibackend.domain.quote.dto.QuoteResponse;
 import com.galpi.galpibackend.domain.quote.dto.UpdateQuoteRequest;
 import com.galpi.galpibackend.domain.quote.service.QuoteService;
 import com.galpi.galpibackend.global.security.CurrentUserId;
+import com.galpi.galpibackend.global.web.SuccessResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -51,9 +51,8 @@ public class QuoteController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<DeleteQuoteResponse> deleteQuote(@CurrentUserId Long userId,
-                                                           @PathVariable Long id) {
-        DeleteQuoteResponse response = quoteService.deleteQuote(userId, id);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<SuccessResponse> deleteQuote(@CurrentUserId Long userId,
+                                                       @PathVariable Long id) {
+        return ResponseEntity.ok(quoteService.deleteQuote(userId, id));
     }
 }

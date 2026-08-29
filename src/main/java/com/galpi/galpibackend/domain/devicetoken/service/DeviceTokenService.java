@@ -1,9 +1,9 @@
 package com.galpi.galpibackend.domain.devicetoken.service;
 
 import com.galpi.galpibackend.domain.devicetoken.dto.DeviceTokenRequest;
-import com.galpi.galpibackend.domain.devicetoken.dto.DeviceTokenResponse;
 import com.galpi.galpibackend.domain.devicetoken.entity.DeviceToken;
 import com.galpi.galpibackend.domain.devicetoken.repository.DeviceTokenRepository;
+import com.galpi.galpibackend.global.web.SuccessResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,7 +17,7 @@ public class DeviceTokenService {
     }
 
     @Transactional
-    public DeviceTokenResponse register(Long userId, DeviceTokenRequest request) {
+    public SuccessResponse register(Long userId, DeviceTokenRequest request) {
         // 같은 토큰이 이미 있으면 소유자/플랫폼만 갱신, 없으면 새로 저장 (upsert)
         deviceTokenRepository.findByToken(request.token())
                 .ifPresentOrElse(
@@ -29,6 +29,6 @@ public class DeviceTokenService {
                                 .build())
                 );
 
-        return DeviceTokenResponse.ok();
+        return SuccessResponse.ok();
     }
 }

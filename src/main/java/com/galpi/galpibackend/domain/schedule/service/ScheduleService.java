@@ -3,7 +3,6 @@ package com.galpi.galpibackend.domain.schedule.service;
 import com.galpi.galpibackend.domain.quote.entity.Quote;
 import com.galpi.galpibackend.domain.quote.repository.QuoteRepository;
 import com.galpi.galpibackend.domain.schedule.dto.CreateScheduleRequest;
-import com.galpi.galpibackend.domain.schedule.dto.DeleteScheduleResponse;
 import com.galpi.galpibackend.domain.schedule.dto.ScheduleResponse;
 import com.galpi.galpibackend.domain.schedule.dto.ScheduleWithQuoteResponse;
 import com.galpi.galpibackend.domain.schedule.dto.UpdateScheduleRequest;
@@ -12,10 +11,15 @@ import com.galpi.galpibackend.domain.schedule.entity.RepeatType;
 import com.galpi.galpibackend.domain.schedule.repository.QuoteScheduleRepository;
 import com.galpi.galpibackend.global.error.CustomException;
 import com.galpi.galpibackend.global.error.ErrorCode;
+import com.galpi.galpibackend.global.web.PageResponse;
+import com.galpi.galpibackend.global.web.SuccessResponse;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -54,10 +58,13 @@ public class ScheduleService {
     }
 
     @Transactional(readOnly = true)
-    public List<ScheduleWithQuoteResponse> getMySchedules(Long userId) {
-        return scheduleRepository.findByUserIdWithQuote(userId).stream()
+    public PageResponse<ScheduleWithQuoteResponse> getMySchedules(Long userId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<QuoteSchedule> schedulePage = scheduleRepository.findByUserIdWithQuote(userId, pageable);
+        List<ScheduleWithQuoteResponse> items = schedulePage.getContent().stream()
                 .map(ScheduleWithQuoteResponse::from)
                 .toList();
+        return PageResponse.from(schedulePage, items);
     }
 
     @Transactional
@@ -80,14 +87,14 @@ public class ScheduleService {
     }
 
     @Transactional
-    public DeleteScheduleResponse deleteSchedule(Long userId, Long scheduleId) {
+    public SuccessResponse deleteSchedule(Long userId, Long scheduleId) {
         QuoteSchedule schedule = scheduleRepository.findById(scheduleId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
         if (!schedule.isOwnedBy(userId)) {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
         scheduleRepository.delete(schedule);
-        return new DeleteScheduleResponse(true);
+        return SuccessResponse.ok();
     }
 
     private static final Set<String> VALID_DAYS = Set.of("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN");

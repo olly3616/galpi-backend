@@ -2,6 +2,8 @@ package com.galpi.galpibackend.domain.user.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -26,6 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
@@ -66,17 +69,17 @@ class ProfileServiceTest {
         given(followRepository.existsByFollowerIdAndFollowingId(1L, 2L)).willReturn(true);
         given(followRepository.countByFollowingId(2L)).willReturn(5L);
         given(followRepository.countByFollowerId(2L)).willReturn(3L);
-        given(quoteRepository.findVisibleQuotesWithWork(2L, Visibility.FOLLOWERS))
-                .willReturn(List.of(followersQuote()));
+        given(quoteRepository.findVisibleQuotesWithWork(eq(2L), eq(Visibility.FOLLOWERS), any()))
+                .willReturn(new PageImpl<>(List.of(followersQuote())));
 
-        ProfileResponse response = profileService.getProfile(1L, 2L);
+        ProfileResponse response = profileService.getProfile(1L, 2L, 0, 20);
 
         assertThat(response.isFollowing()).isTrue();
         assertThat(response.followerCount()).isEqualTo(5L);
         assertThat(response.followingCount()).isEqualTo(3L);
-        assertThat(response.quotes()).hasSize(1);
-        assertThat(response.quotes().get(0).work().title()).isEqualTo("데미안");
-        assertThat(response.quotes().get(0).work().author()).isEqualTo("헤르만 헤세");
+        assertThat(response.quotes().items()).hasSize(1);
+        assertThat(response.quotes().items().get(0).work().title()).isEqualTo("데미안");
+        assertThat(response.quotes().items().get(0).work().author()).isEqualTo("헤르만 헤세");
     }
 
     @Test
@@ -87,12 +90,12 @@ class ProfileServiceTest {
         given(followRepository.countByFollowingId(2L)).willReturn(0L);
         given(followRepository.countByFollowerId(2L)).willReturn(0L);
 
-        ProfileResponse response = profileService.getProfile(1L, 2L);
+        ProfileResponse response = profileService.getProfile(1L, 2L, 0, 20);
 
         assertThat(response.isFollowing()).isFalse();
-        assertThat(response.quotes()).isEmpty();
+        assertThat(response.quotes().items()).isEmpty();
         verify(quoteRepository, never())
-                .findVisibleQuotesWithWork(2L, Visibility.FOLLOWERS);
+                .findVisibleQuotesWithWork(eq(2L), eq(Visibility.FOLLOWERS), any());
     }
 
     @Test
@@ -101,10 +104,10 @@ class ProfileServiceTest {
         given(userRepository.findById(1L)).willReturn(Optional.of(userWithId(1L)));
         given(followRepository.countByFollowingId(1L)).willReturn(0L);
         given(followRepository.countByFollowerId(1L)).willReturn(0L);
-        given(quoteRepository.findVisibleQuotesWithWork(1L, Visibility.FOLLOWERS))
-                .willReturn(List.of());
+        given(quoteRepository.findVisibleQuotesWithWork(eq(1L), eq(Visibility.FOLLOWERS), any()))
+                .willReturn(new PageImpl<>(List.of()));
 
-        ProfileResponse response = profileService.getProfile(1L, 1L);
+        ProfileResponse response = profileService.getProfile(1L, 1L, 0, 20);
 
         assertThat(response.isFollowing()).isFalse();
         verify(followRepository, never()).existsByFollowerIdAndFollowingId(1L, 1L);
@@ -115,7 +118,7 @@ class ProfileServiceTest {
     void getProfile_notFound() {
         given(userRepository.findById(99L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> profileService.getProfile(1L, 99L))
+        assertThatThrownBy(() -> profileService.getProfile(1L, 99L, 0, 20))
                 .isInstanceOf(CustomException.class)
                 .extracting(e -> ((CustomException) e).getErrorCode())
                 .isEqualTo(ErrorCode.NOT_FOUND);

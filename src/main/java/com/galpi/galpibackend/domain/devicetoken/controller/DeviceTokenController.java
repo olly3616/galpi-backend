@@ -1,9 +1,9 @@
 package com.galpi.galpibackend.domain.devicetoken.controller;
 
 import com.galpi.galpibackend.domain.devicetoken.dto.DeviceTokenRequest;
-import com.galpi.galpibackend.domain.devicetoken.dto.DeviceTokenResponse;
 import com.galpi.galpibackend.domain.devicetoken.service.DeviceTokenService;
 import com.galpi.galpibackend.global.security.CurrentUserId;
+import com.galpi.galpibackend.global.web.SuccessResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -22,9 +22,8 @@ public class DeviceTokenController {
     }
 
     @PostMapping
-    public ResponseEntity<DeviceTokenResponse> register(@CurrentUserId Long userId,
-                                                        @Valid @RequestBody DeviceTokenRequest request) {
-        DeviceTokenResponse response = deviceTokenService.register(userId, request);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<SuccessResponse> register(@CurrentUserId Long userId,
+                                                     @Valid @RequestBody DeviceTokenRequest request) {
+        return ResponseEntity.ok(deviceTokenService.register(userId, request));
     }
 }

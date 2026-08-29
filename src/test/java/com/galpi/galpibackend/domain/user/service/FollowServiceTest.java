@@ -3,6 +3,7 @@ package com.galpi.galpibackend.domain.user.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -10,13 +11,15 @@ import static org.mockito.Mockito.verify;
 import com.galpi.galpibackend.domain.follow.entity.Follow;
 import com.galpi.galpibackend.domain.follow.repository.FollowRepository;
 import com.galpi.galpibackend.domain.user.dto.FollowResponse;
-import com.galpi.galpibackend.domain.user.dto.UserSearchResponse;
+import com.galpi.galpibackend.domain.user.dto.UserSearchItem;
 import com.galpi.galpibackend.domain.user.entity.User;
 import com.galpi.galpibackend.domain.user.repository.UserRepository;
 import com.galpi.galpibackend.global.error.CustomException;
 import com.galpi.galpibackend.global.error.ErrorCode;
+import com.galpi.galpibackend.global.web.PageResponse;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.PageImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,11 +49,11 @@ class FollowServiceTest {
     @Test
     @DisplayName("사용자 검색 시 팔로우 여부(isFollowing)를 함께 표시한다")
     void searchUsers_marksFollowing() {
-        given(userRepository.searchByNickname("책", 1L))
-                .willReturn(List.of(userWithId(2L, "책벌레"), userWithId(3L, "책친구")));
+        given(userRepository.searchByNickname(eq("책"), eq(1L), any()))
+                .willReturn(new PageImpl<>(List.of(userWithId(2L, "책벌레"), userWithId(3L, "책친구"))));
         given(followRepository.findFollowingIdsIn(1L, List.of(2L, 3L))).willReturn(List.of(2L));
 
-        UserSearchResponse response = followService.searchUsers(1L, "책");
+        PageResponse<UserSearchItem> response = followService.searchUsers(1L, "책", 0, 20);
 
         assertThat(response.items()).hasSize(2);
         assertThat(response.items().get(0).userId()).isEqualTo(2L);
@@ -62,11 +65,12 @@ class FollowServiceTest {
     @Test
     @DisplayName("검색어의 LIKE 와일드카드(%,_,\\)를 이스케이프해 조회한다")
     void searchUsers_escapesLikeWildcards() {
-        given(userRepository.searchByNickname("100\\% \\_a\\\\b", 1L)).willReturn(List.of());
+        given(userRepository.searchByNickname(eq("100\\% \\_a\\\\b"), eq(1L), any()))
+                .willReturn(new PageImpl<>(List.of()));
 
-        followService.searchUsers(1L, "100% _a\\b");
+        followService.searchUsers(1L, "100% _a\\b", 0, 20);
 
-        verify(userRepository).searchByNickname("100\\% \\_a\\\\b", 1L);
+        verify(userRepository).searchByNickname(eq("100\\% \\_a\\\\b"), eq(1L), any());
     }
 
     @Test

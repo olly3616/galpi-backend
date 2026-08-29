@@ -11,14 +11,17 @@ import org.springframework.data.repository.query.Param;
 
 public interface QuoteRepository extends JpaRepository<Quote, Long> {
 
-    List<Quote> findByUserIdAndWorkIdOrderByCreatedAtDesc(Long userId, Long workId);
+    Page<Quote> findByUserIdAndWorkIdOrderByCreatedAtDesc(Long userId, Long workId, Pageable pageable);
 
-    // 출처(work)를 fetch join으로 함께 로딩해 N+1을 방지한다. (프로필 공개 대사)
-    @Query("select q from Quote q join fetch q.work "
+    // 출처(work)를 fetch join으로 함께 로딩해 N+1을 방지한다. (프로필 공개 대사, 페이지네이션)
+    @Query(value = "select q from Quote q join fetch q.work "
             + "where q.userId = :userId and q.visibility = :visibility "
-            + "order by q.createdAt desc")
-    List<Quote> findVisibleQuotesWithWork(@Param("userId") Long userId,
-                                          @Param("visibility") Visibility visibility);
+            + "order by q.createdAt desc",
+            countQuery = "select count(q) from Quote q "
+            + "where q.userId = :userId and q.visibility = :visibility")
+    Page<Quote> findVisibleQuotesWithWork(@Param("userId") Long userId,
+                                          @Param("visibility") Visibility visibility,
+                                          Pageable pageable);
 
     // 피드: 출처를 fetch join. work는 ManyToOne이라 페이지네이션과 함께 써도 안전하다.
     @Query(value = "select q from Quote q join fetch q.work "

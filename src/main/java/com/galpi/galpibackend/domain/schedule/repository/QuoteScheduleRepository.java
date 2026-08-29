@@ -3,16 +3,19 @@ package com.galpi.galpibackend.domain.schedule.repository;
 import com.galpi.galpibackend.domain.schedule.entity.QuoteSchedule;
 import java.time.LocalTime;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface QuoteScheduleRepository extends JpaRepository<QuoteSchedule, Long> {
 
-    // 대사·출처를 fetch join으로 함께 로딩 (내 알림 목록 N+1 방지)
-    @Query("select s from QuoteSchedule s join fetch s.quote q join fetch q.work "
-            + "where s.userId = :userId order by s.createdAt desc")
-    List<QuoteSchedule> findByUserIdWithQuote(@Param("userId") Long userId);
+    // 대사·출처를 fetch join으로 함께 로딩 (내 알림 목록 N+1 방지, 페이지네이션)
+    @Query(value = "select s from QuoteSchedule s join fetch s.quote q join fetch q.work "
+            + "where s.userId = :userId order by s.createdAt desc",
+            countQuery = "select count(s) from QuoteSchedule s where s.userId = :userId")
+    Page<QuoteSchedule> findByUserIdWithQuote(@Param("userId") Long userId, Pageable pageable);
 
     List<QuoteSchedule> findByQuoteIdOrderByCreatedAtAsc(Long quoteId);
 
