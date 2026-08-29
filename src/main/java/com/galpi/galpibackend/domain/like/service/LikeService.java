@@ -34,9 +34,11 @@ public class LikeService {
         if (!canAccess(userId, quote)) {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
-        if (!likeRepository.existsByUserIdAndQuoteId(userId, quoteId)) {
-            likeRepository.save(Like.builder().userId(userId).quoteId(quoteId).build());
+        // 한 사람이 같은 대사에 한 번만 좋아요할 수 있다. 이미 눌렀으면 거부.
+        if (likeRepository.existsByUserIdAndQuoteId(userId, quoteId)) {
+            throw new CustomException(ErrorCode.ALREADY_LIKED);
         }
+        likeRepository.save(Like.builder().userId(userId).quoteId(quoteId).build());
         return new LikeResponse(true, likeRepository.countByQuoteId(quoteId));
     }
 
