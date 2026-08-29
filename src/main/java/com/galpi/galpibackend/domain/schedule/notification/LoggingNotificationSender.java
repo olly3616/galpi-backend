@@ -15,6 +15,8 @@ public class LoggingNotificationSender implements NotificationSender {
 
     @Override
     public void send(Long userId, String title, String body, Long quoteId) {
-        log.info("[알림 발송] userId={}, quoteId={}, title={}, body={}", userId, quoteId, title, body);
+        // 대사 본문(개인 콘텐츠)은 INFO 로그에 남기지 않는다. 상세는 DEBUG에서만.
+        log.info("[알림 발송] userId={}, quoteId={}, title={}", userId, quoteId, title);
+        log.debug("[알림 발송 상세] quoteId={}, body={}", quoteId, body);
     }
 }

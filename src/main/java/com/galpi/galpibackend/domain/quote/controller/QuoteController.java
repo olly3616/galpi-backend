@@ -45,7 +45,7 @@ public class QuoteController {
     @PatchMapping("/{id}")
     public ResponseEntity<QuoteResponse> updateQuote(@CurrentUserId Long userId,
                                                      @PathVariable Long id,
-                                                     @RequestBody UpdateQuoteRequest request) {
+                                                     @Valid @RequestBody UpdateQuoteRequest request) {
         QuoteResponse response = quoteService.updateQuote(userId, id, request);
         return ResponseEntity.ok(response);
     }

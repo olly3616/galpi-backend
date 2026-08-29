@@ -3,7 +3,7 @@ package com.galpi.galpibackend.domain.feed.service;
 import com.galpi.galpibackend.domain.feed.dto.FeedResponse;
 import com.galpi.galpibackend.domain.feed.dto.FeedResponse.Author;
 import com.galpi.galpibackend.domain.feed.dto.FeedResponse.FeedItem;
-import com.galpi.galpibackend.domain.feed.dto.FeedResponse.WorkRef;
+import com.galpi.galpibackend.domain.work.dto.WorkSource;
 import com.galpi.galpibackend.domain.follow.repository.FollowRepository;
 import com.galpi.galpibackend.domain.like.repository.LikeRepository;
 import com.galpi.galpibackend.domain.like.repository.LikeRepository.QuoteLikeCount;
@@ -64,7 +64,7 @@ public class FeedService {
                         quote.getContent(),
                         quote.getCharacterName(),
                         new Author(quote.getUserId(), nicknames.getOrDefault(quote.getUserId(), "")),
-                        new WorkRef(quote.getWork().getTitle(), quote.getWork().getAuthor()),
+                        WorkSource.from(quote.getWork()),
                         likeCounts.getOrDefault(quote.getId(), 0L),
                         likedQuoteIds.contains(quote.getId())))
                 .toList();

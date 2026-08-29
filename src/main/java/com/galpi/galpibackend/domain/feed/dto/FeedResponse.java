@@ -1,5 +1,6 @@
 package com.galpi.galpibackend.domain.feed.dto;
 
+import com.galpi.galpibackend.domain.work.dto.WorkSource;
 import java.util.List;
 
 public record FeedResponse(
@@ -13,7 +14,7 @@ public record FeedResponse(
             String content,
             String characterName,
             Author author,
-            WorkRef work,       // 출처 — 필수 (저작권)
+            WorkSource work,    // 출처 — 필수 (저작권)
             long likeCount,
             boolean isLiked
     ) {
@@ -22,12 +23,6 @@ public record FeedResponse(
     public record Author(
             Long userId,
             String nickname
-    ) {
-    }
-
-    public record WorkRef(
-            String title,
-            String author
     ) {
     }
 }

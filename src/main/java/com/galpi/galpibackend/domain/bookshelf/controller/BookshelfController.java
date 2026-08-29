@@ -6,9 +6,12 @@ import com.galpi.galpibackend.domain.bookshelf.dto.BookshelfResponse;
 import com.galpi.galpibackend.domain.bookshelf.dto.RemoveBookshelfResponse;
 import com.galpi.galpibackend.domain.bookshelf.service.BookshelfService;
 import com.galpi.galpibackend.global.security.CurrentUserId;
+import com.galpi.galpibackend.global.web.ApiPaging;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -20,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/bookshelf")
+@Validated
 public class BookshelfController {
 
     private final BookshelfService bookshelfService;
@@ -38,8 +42,8 @@ public class BookshelfController {
     @GetMapping("/me")
     public ResponseEntity<BookshelfResponse> getMyBookshelf(
             @CurrentUserId Long userId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = ApiPaging.DEFAULT_PAGE) @Min(0) int page,
+            @RequestParam(defaultValue = ApiPaging.DEFAULT_SIZE) @Min(1) int size) {
         BookshelfResponse response = bookshelfService.getMyBookshelf(userId, page, size);
         return ResponseEntity.ok(response);
     }
