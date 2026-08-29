@@ -11,7 +11,9 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import java.util.Map;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -21,10 +23,28 @@ class AuthApiTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     private String signupBody(String email, String nickname) {
         return """
                 { "email": "%s", "password": "password123", "nickname": "%s" }
                 """.formatted(email, nickname);
+    }
+
+    private String signupAndGetRefreshToken(String email, String nickname) throws Exception {
+        String body = mockMvc.perform(post("/api/auth/signup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(signupBody(email, nickname)))
+                .andReturn().getResponse().getContentAsString();
+        Map<?, ?> json = objectMapper.readValue(body, Map.class);
+        return (String) json.get("refreshToken");
+    }
+
+    private String refreshBody(String refreshToken) {
+        return """
+                { "refreshToken": "%s" }
+                """.formatted(refreshToken);
     }
 
     @Test
@@ -98,5 +118,44 @@ class AuthApiTest {
                         .content(loginBody))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("INVALID_CREDENTIALS"));
+    }
+
+    @Test
+    @DisplayName("토큰 갱신 시 새 토큰 쌍을 발급하고, 사용된 리프레시 토큰은 더 이상 통하지 않는다(회전)")
+    void refresh_rotatesToken() throws Exception {
+        String refreshToken = signupAndGetRefreshToken("rotate@galpi.com", "회전유저");
+
+        // 첫 갱신: 새 accessToken/refreshToken 발급
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(refreshBody(refreshToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andExpect(jsonPath("$.refreshToken").exists());
+
+        // 이미 회전(폐기)된 이전 리프레시 토큰은 거부된다
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(refreshBody(refreshToken)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REFRESH_TOKEN"));
+    }
+
+    @Test
+    @DisplayName("로그아웃하면 해당 리프레시 토큰으로 더 이상 갱신할 수 없다")
+    void logout_revokesRefreshToken() throws Exception {
+        String refreshToken = signupAndGetRefreshToken("logout@galpi.com", "로그아웃유저");
+
+        mockMvc.perform(post("/api/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(refreshBody(refreshToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        mockMvc.perform(post("/api/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(refreshBody(refreshToken)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REFRESH_TOKEN"));
     }
 }

@@ -12,11 +12,15 @@ import com.galpi.galpibackend.domain.auth.dto.LoginRequest;
 import com.galpi.galpibackend.domain.auth.dto.RefreshRequest;
 import com.galpi.galpibackend.domain.auth.dto.RefreshResponse;
 import com.galpi.galpibackend.domain.auth.dto.SignupRequest;
+import com.galpi.galpibackend.domain.auth.entity.RefreshToken;
+import com.galpi.galpibackend.domain.auth.repository.RefreshTokenRepository;
 import com.galpi.galpibackend.domain.user.entity.User;
-import java.util.Optional;
 import com.galpi.galpibackend.domain.user.repository.UserRepository;
 import com.galpi.galpibackend.global.error.CustomException;
 import com.galpi.galpibackend.global.error.ErrorCode;
+import com.galpi.galpibackend.global.jwt.JwtProperties;
+import com.galpi.galpibackend.global.jwt.TokenHasher;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,10 +37,16 @@ class AuthServiceTest {
     private UserRepository userRepository;
 
     @Mock
+    private RefreshTokenRepository refreshTokenRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Mock
     private com.galpi.galpibackend.global.jwt.JwtProvider jwtProvider;
+
+    @Mock
+    private JwtProperties jwtProperties;
 
     @InjectMocks
     private AuthService authService;
@@ -147,17 +157,39 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("유효한 리프레시 토큰이면 새 액세스 토큰을 반환한다")
+    @DisplayName("유효한 리프레시 토큰이면 기존 토큰을 폐기하고 새 토큰 쌍을 발급한다(회전)")
     void refresh_success() {
+        String hash = TokenHasher.sha256Hex(refreshRequest.refreshToken());
+        RefreshToken stored = RefreshToken.builder().userId(1L).tokenHash(hash)
+                .expiresAt(java.time.LocalDateTime.now().plusDays(1)).build();
         given(jwtProvider.validateToken(refreshRequest.refreshToken())).willReturn(true);
         given(jwtProvider.isRefreshToken(refreshRequest.refreshToken())).willReturn(true);
+        given(refreshTokenRepository.findByTokenHash(hash)).willReturn(Optional.of(stored));
         given(jwtProvider.getUserId(refreshRequest.refreshToken())).willReturn(1L);
         given(userRepository.existsById(1L)).willReturn(true);
         given(jwtProvider.createAccessToken(1L)).willReturn("new-access");
+        given(jwtProvider.createRefreshToken(1L)).willReturn("new-refresh");
 
         RefreshResponse response = authService.refresh(refreshRequest);
 
         assertThat(response.accessToken()).isEqualTo("new-access");
+        assertThat(response.refreshToken()).isEqualTo("new-refresh");
+        verify(refreshTokenRepository).delete(stored);          // 사용한 토큰 폐기
+        verify(refreshTokenRepository).save(any(RefreshToken.class)); // 새 토큰 저장
+    }
+
+    @Test
+    @DisplayName("저장소에 없는(회전/로그아웃된) 리프레시 토큰이면 INVALID_REFRESH_TOKEN 예외를 던진다")
+    void refresh_tokenNotInStore() {
+        String hash = TokenHasher.sha256Hex(refreshRequest.refreshToken());
+        given(jwtProvider.validateToken(refreshRequest.refreshToken())).willReturn(true);
+        given(jwtProvider.isRefreshToken(refreshRequest.refreshToken())).willReturn(true);
+        given(refreshTokenRepository.findByTokenHash(hash)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> authService.refresh(refreshRequest))
+                .isInstanceOf(CustomException.class)
+                .extracting(e -> ((CustomException) e).getErrorCode())
+                .isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN);
     }
 
     @Test
@@ -186,8 +218,12 @@ class AuthServiceTest {
     @Test
     @DisplayName("토큰의 사용자가 존재하지 않으면 INVALID_REFRESH_TOKEN 예외를 던진다")
     void refresh_userNotFound() {
+        String hash = TokenHasher.sha256Hex(refreshRequest.refreshToken());
+        RefreshToken stored = RefreshToken.builder().userId(1L).tokenHash(hash)
+                .expiresAt(java.time.LocalDateTime.now().plusDays(1)).build();
         given(jwtProvider.validateToken(refreshRequest.refreshToken())).willReturn(true);
         given(jwtProvider.isRefreshToken(refreshRequest.refreshToken())).willReturn(true);
+        given(refreshTokenRepository.findByTokenHash(hash)).willReturn(Optional.of(stored));
         given(jwtProvider.getUserId(refreshRequest.refreshToken())).willReturn(1L);
         given(userRepository.existsById(1L)).willReturn(false);
 
@@ -195,5 +231,15 @@ class AuthServiceTest {
                 .isInstanceOf(CustomException.class)
                 .extracting(e -> ((CustomException) e).getErrorCode())
                 .isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN);
+    }
+
+    @Test
+    @DisplayName("로그아웃하면 저장된 리프레시 토큰을 폐기한다")
+    void logout_revokesToken() {
+        String hash = TokenHasher.sha256Hex("refresh-token");
+
+        authService.logout("refresh-token");
+
+        verify(refreshTokenRepository).deleteByTokenHash(hash);
     }
 }

@@ -2,6 +2,8 @@ package com.galpi.galpibackend.domain.auth.controller;
 
 import com.galpi.galpibackend.domain.auth.dto.AuthResponse;
 import com.galpi.galpibackend.domain.auth.dto.LoginRequest;
+import com.galpi.galpibackend.domain.auth.dto.LogoutRequest;
+import com.galpi.galpibackend.domain.auth.dto.LogoutResponse;
 import com.galpi.galpibackend.domain.auth.dto.RefreshRequest;
 import com.galpi.galpibackend.domain.auth.dto.RefreshResponse;
 import com.galpi.galpibackend.domain.auth.dto.SignupRequest;
@@ -39,6 +41,12 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<RefreshResponse> refresh(@Valid @RequestBody RefreshRequest request) {
         RefreshResponse response = authService.refresh(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<LogoutResponse> logout(@Valid @RequestBody LogoutRequest request) {
+        LogoutResponse response = authService.logout(request.refreshToken());
         return ResponseEntity.ok(response);
     }
 }
