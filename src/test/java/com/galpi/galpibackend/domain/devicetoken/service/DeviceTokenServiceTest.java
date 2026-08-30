@@ -42,6 +42,24 @@ class DeviceTokenServiceTest {
     }
 
     @Test
+    @DisplayName("같은 사용자·플랫폼으로 재등록하면 값이 그대로 유지된다(불필요한 갱신 없음)")
+    void register_existingToken_sameOwner() {
+        DeviceToken existing = DeviceToken.builder()
+                .userId(1L)
+                .token(request.token())
+                .platform(Platform.ANDROID)
+                .build();
+        given(deviceTokenRepository.findByToken(request.token())).willReturn(Optional.of(existing));
+
+        SuccessResponse response = deviceTokenService.register(1L, request);
+
+        assertThat(response.success()).isTrue();
+        assertThat(existing.getUserId()).isEqualTo(1L);
+        assertThat(existing.getPlatform()).isEqualTo(Platform.ANDROID);
+        verify(deviceTokenRepository, never()).save(any(DeviceToken.class));
+    }
+
+    @Test
     @DisplayName("이미 있는 토큰이면 소유자만 갱신하고 새로 저장하지 않는다")
     void register_existingToken() {
         DeviceToken existing = DeviceToken.builder()
