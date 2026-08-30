@@ -1,3 +1,10 @@
+# ─────────────────────────────────────────────────────────────
+# 이 파일은 공통 + 로컬 개발(dev) 기본값이다. 프로파일 없이 실행하면 이 설정으로 뜬다.
+#   - 로컬 개발 : 아무 프로파일 없이 실행 → Swagger ON, ddl-auto=update (편의 우선)
+#   - 스테이징  : SPRING_PROFILES_ACTIVE=staging → application-staging.yaml 이 덮어씀 (Swagger ON)
+#   - 운영      : SPRING_PROFILES_ACTIVE=prod    → application-prod.yaml 이 덮어씀 (Swagger OFF, 잠금)
+# 브랜치가 아니라 '실행 시 환경변수'로 환경을 고른다. 코드(main)는 하나다.
+# ─────────────────────────────────────────────────────────────
 spring:
   application:
     name: galpi-backend
