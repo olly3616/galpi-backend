@@ -35,6 +35,12 @@ aws:
     # AWS SDK 기본 체인이 환경변수(AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY)에서 읽는다.
     bucket: ${AWS_S3_BUCKET:}
 
+fcm:
+  # true일 때만 실제 FCM 발송. 기본(false)이면 로깅만 하므로 Firebase 키 없이 기동된다.
+  enabled: ${FCM_ENABLED:false}
+  # Firebase 서비스 계정 키(JSON) 파일 경로
+  credentials-path: ${FCM_CREDENTIALS_PATH:}
+
 cors:
   # 웹 프론트엔드 출처 허용 목록. 실제 배포 도메인을 추가하세요.
   allowed-origins:
