@@ -11,6 +11,7 @@ import com.galpi.galpibackend.global.web.PageResponse;
 import com.galpi.galpibackend.global.web.SuccessResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -39,6 +40,7 @@ public class ScheduleController {
 
     @Operation(summary = "대사 알림 생성",
             description = "대사(quoteId)에 알림을 설정합니다. repeatType이 WEEKLY이면 daysOfWeek가 필수입니다. 본인 대사만 가능.")
+    @ApiResponse(responseCode = "201", description = "생성 성공, 생성된 알림 반환")
     @PostMapping("/api/quotes/{quoteId}/schedules")
     public ResponseEntity<ScheduleResponse> createSchedule(@CurrentUserId Long userId,
                                                            @Parameter(description = "대사 ID") @PathVariable Long quoteId,

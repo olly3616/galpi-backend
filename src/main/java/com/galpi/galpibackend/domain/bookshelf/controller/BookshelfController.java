@@ -10,6 +10,7 @@ import com.galpi.galpibackend.global.web.PageResponse;
 import com.galpi.galpibackend.global.web.SuccessResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
@@ -39,6 +40,7 @@ public class BookshelfController {
 
     @Operation(summary = "책장에 책 추가",
             description = "검색한 책(source=API) 또는 직접 등록(source=MANUAL)을 책장에 담습니다. 이미 있으면 409 ALREADY_IN_SHELF.")
+    @ApiResponse(responseCode = "201", description = "추가 성공, 담긴 책의 workId 반환")
     @PostMapping
     public ResponseEntity<AddBookshelfResponse> addBook(@CurrentUserId Long userId,
                                                         @Valid @RequestBody AddBookshelfRequest request) {

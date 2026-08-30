@@ -8,6 +8,7 @@ import com.galpi.galpibackend.global.security.CurrentUserId;
 import com.galpi.galpibackend.global.web.SuccessResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -33,6 +34,7 @@ public class QuoteController {
     }
 
     @Operation(summary = "대사 작성", description = "특정 책(workId)에 대사를 기록합니다. visibility 미지정 시 PRIVATE로 저장됩니다.")
+    @ApiResponse(responseCode = "201", description = "작성 성공, 생성된 대사 반환")
     @PostMapping
     public ResponseEntity<QuoteResponse> createQuote(@CurrentUserId Long userId,
                                                      @Valid @RequestBody CreateQuoteRequest request) {
