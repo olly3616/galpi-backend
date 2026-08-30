@@ -1,7 +1,6 @@
 package com.galpi.galpibackend.domain.bookshelf.dto;
 
 import com.galpi.galpibackend.domain.work.entity.BookSource;
-import com.galpi.galpibackend.domain.work.entity.BookType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -27,11 +26,6 @@ public record AddBookshelfRequest(
 
         @Schema(description = "ISBN(선택). API 책의 중복 판정 기준", example = "9788937460449",
                 requiredMode = Schema.RequiredMode.NOT_REQUIRED)
-        String isbn,
-
-        @Schema(description = "유형. 소설(NOVEL) 또는 웹소설(WEBNOVEL)", example = "NOVEL",
-                requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotNull(message = "type은 필수입니다.")
-        BookType type
+        String isbn
 ) {
 }

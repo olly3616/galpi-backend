@@ -132,7 +132,6 @@ public class BookshelfService {
     private Work createWork(AddBookshelfRequest request, String isbn, Long ownerUserId) {
         return workRepository.save(Work.builder()
                 .source(request.source())
-                .type(request.type())
                 .title(request.title())
                 .author(request.author())
                 .publisher(request.publisher())

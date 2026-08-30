@@ -17,7 +17,6 @@ import com.galpi.galpibackend.domain.bookshelf.repository.BookshelfRepository;
 import com.galpi.galpibackend.domain.quote.repository.QuoteRepository;
 import com.galpi.galpibackend.domain.quote.repository.QuoteRepository.WorkQuoteCount;
 import com.galpi.galpibackend.domain.work.entity.BookSource;
-import com.galpi.galpibackend.domain.work.entity.BookType;
 import com.galpi.galpibackend.domain.work.entity.Work;
 import com.galpi.galpibackend.domain.work.repository.WorkRepository;
 import com.galpi.galpibackend.global.error.CustomException;
@@ -52,7 +51,6 @@ class BookshelfServiceTest {
     private Work workWithId(long id) {
         Work work = Work.builder()
                 .source(BookSource.API)
-                .type(BookType.NOVEL)
                 .title("데미안")
                 .author("헤르만 헤세")
                 .isbn("9788937460449")
@@ -66,7 +64,7 @@ class BookshelfServiceTest {
     void addBook_apiExistingWork() {
         AddBookshelfRequest request = new AddBookshelfRequest(
                 BookSource.API, "데미안", "헤르만 헤세", "민음사",
-                "https://cover", "9788937460449", BookType.NOVEL);
+                "https://cover", "9788937460449");
         Work existing = workWithId(10L);
         given(workRepository.findByIsbn("9788937460449")).willReturn(Optional.of(existing));
         given(bookshelfRepository.existsByUserIdAndWorkId(1L, 10L)).willReturn(false);
@@ -83,7 +81,7 @@ class BookshelfServiceTest {
     void addBook_manualNewWork() {
         AddBookshelfRequest request = new AddBookshelfRequest(
                 BookSource.MANUAL, "전지적 독자 시점", "싱숑", null,
-                null, null, BookType.WEBNOVEL);
+                null, null);
         given(workRepository.findManualWork(1L, "전지적 독자 시점", "싱숑"))
                 .willReturn(Optional.empty());
         given(workRepository.save(any(Work.class))).willAnswer(invocation -> {
@@ -104,7 +102,7 @@ class BookshelfServiceTest {
     @DisplayName("저자가 없는 MANUAL 책을 다시 추가하면 기존 Work를 재사용한다 (중복 생성 방지)")
     void addBook_manualNullAuthorReusesWork() {
         AddBookshelfRequest request = new AddBookshelfRequest(
-                BookSource.MANUAL, "무제 웹소설", null, null, null, null, BookType.WEBNOVEL);
+                BookSource.MANUAL, "무제 웹소설", null, null, null, null);
         Work existing = workWithId(30L);
         given(workRepository.findManualWork(1L, "무제 웹소설", null)).willReturn(Optional.of(existing));
         given(bookshelfRepository.existsByUserIdAndWorkId(1L, 30L)).willReturn(false);
@@ -121,7 +119,7 @@ class BookshelfServiceTest {
     void addBook_alreadyInShelf() {
         AddBookshelfRequest request = new AddBookshelfRequest(
                 BookSource.API, "데미안", "헤르만 헤세", "민음사",
-                "https://cover", "9788937460449", BookType.NOVEL);
+                "https://cover", "9788937460449");
         Work existing = workWithId(10L);
         given(workRepository.findByIsbn("9788937460449")).willReturn(Optional.of(existing));
         given(bookshelfRepository.existsByUserIdAndWorkId(1L, 10L)).willReturn(true);

@@ -15,7 +15,6 @@ import com.galpi.galpibackend.domain.quote.entity.Quote;
 import com.galpi.galpibackend.domain.quote.entity.Visibility;
 import com.galpi.galpibackend.domain.quote.repository.QuoteRepository;
 import com.galpi.galpibackend.domain.work.entity.BookSource;
-import com.galpi.galpibackend.domain.work.entity.BookType;
 import com.galpi.galpibackend.domain.work.entity.Work;
 import com.galpi.galpibackend.global.error.CustomException;
 import com.galpi.galpibackend.global.error.ErrorCode;
@@ -44,7 +43,7 @@ class LikeServiceTest {
     private LikeService likeService;
 
     private Quote quote(long quoteId, long authorId, Visibility visibility) {
-        Work work = Work.builder().source(BookSource.API).type(BookType.NOVEL)
+        Work work = Work.builder().source(BookSource.API)
                 .title("데미안").author("헤르만 헤세").build();
         ReflectionTestUtils.setField(work, "id", 10L);
         Quote q = Quote.builder().userId(authorId).work(work)

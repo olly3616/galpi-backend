@@ -14,7 +14,6 @@ import com.galpi.galpibackend.domain.schedule.entity.QuoteSchedule;
 import com.galpi.galpibackend.domain.schedule.entity.RepeatType;
 import com.galpi.galpibackend.domain.schedule.repository.QuoteScheduleRepository;
 import com.galpi.galpibackend.domain.work.entity.BookSource;
-import com.galpi.galpibackend.domain.work.entity.BookType;
 import com.galpi.galpibackend.domain.work.entity.Work;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
@@ -41,7 +40,7 @@ class NotificationDispatchServiceTest {
     private NotificationDispatchService dispatchService;
 
     private QuoteSchedule schedule(long id, RepeatType type, String daysOfWeek, LocalDateTime lastSentAt) {
-        Work work = Work.builder().source(BookSource.API).type(BookType.NOVEL)
+        Work work = Work.builder().source(BookSource.API)
                 .title("데미안").author("헤르만 헤세").build();
         ReflectionTestUtils.setField(work, "id", 10L);
         Quote quote = Quote.builder().userId(1L).work(work)

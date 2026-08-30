@@ -1,7 +1,6 @@
 package com.galpi.galpibackend.domain.work.dto;
 
 import com.galpi.galpibackend.domain.work.entity.BookSource;
-import com.galpi.galpibackend.domain.work.entity.BookType;
 import com.galpi.galpibackend.domain.work.entity.Work;
 
 public record WorkResponse(
@@ -9,7 +8,6 @@ public record WorkResponse(
         String title,
         String author,
         String coverUrl,
-        BookType type,
         BookSource source
 ) {
 
@@ -19,7 +17,6 @@ public record WorkResponse(
                 work.getTitle(),
                 work.getAuthor(),
                 work.getCoverUrl(),
-                work.getType(),
                 work.getSource()
         );
     }

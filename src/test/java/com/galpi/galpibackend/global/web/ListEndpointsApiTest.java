@@ -15,7 +15,6 @@ import com.galpi.galpibackend.domain.schedule.repository.QuoteScheduleRepository
 import com.galpi.galpibackend.domain.user.entity.User;
 import com.galpi.galpibackend.domain.user.repository.UserRepository;
 import com.galpi.galpibackend.domain.work.entity.BookSource;
-import com.galpi.galpibackend.domain.work.entity.BookType;
 import com.galpi.galpibackend.domain.work.entity.Work;
 import com.galpi.galpibackend.domain.work.repository.WorkRepository;
 import com.galpi.galpibackend.global.jwt.JwtProvider;
@@ -50,7 +49,7 @@ class ListEndpointsApiTest {
     }
 
     private Work saveWork() {
-        return workRepository.save(Work.builder().source(BookSource.API).type(BookType.NOVEL)
+        return workRepository.save(Work.builder().source(BookSource.API)
                 .title("데미안").author("헤르만 헤세").isbn("9788937460449").build());
     }
 

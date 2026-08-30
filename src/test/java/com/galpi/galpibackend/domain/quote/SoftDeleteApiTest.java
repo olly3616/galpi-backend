@@ -12,7 +12,6 @@ import com.galpi.galpibackend.domain.quote.repository.QuoteRepository;
 import com.galpi.galpibackend.domain.user.entity.User;
 import com.galpi.galpibackend.domain.user.repository.UserRepository;
 import com.galpi.galpibackend.domain.work.entity.BookSource;
-import com.galpi.galpibackend.domain.work.entity.BookType;
 import com.galpi.galpibackend.domain.work.entity.Work;
 import com.galpi.galpibackend.domain.work.repository.WorkRepository;
 import com.galpi.galpibackend.global.jwt.JwtProvider;
@@ -43,7 +42,7 @@ class SoftDeleteApiTest {
     void deleteQuote_isSoftDelete() throws Exception {
         User user = userRepository.save(User.builder()
                 .email("soft@galpi.com").password("h").nickname("소프트").build());
-        Work work = workRepository.save(Work.builder().source(BookSource.API).type(BookType.NOVEL)
+        Work work = workRepository.save(Work.builder().source(BookSource.API)
                 .title("데미안").author("헤르만 헤세").isbn("9788937460449").build());
         Quote quote = quoteRepository.save(Quote.builder().userId(user.getId()).work(work)
                 .content("새는 알에서...").visibility(Visibility.PRIVATE).build());
