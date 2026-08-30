@@ -15,7 +15,7 @@ import com.galpi.galpibackend.domain.schedule.entity.RepeatType;
 import com.galpi.galpibackend.domain.schedule.repository.QuoteScheduleRepository;
 import com.galpi.galpibackend.domain.work.entity.BookSource;
 import com.galpi.galpibackend.domain.work.entity.Work;
-import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
@@ -56,26 +56,44 @@ class NotificationDispatchServiceTest {
         return schedule;
     }
 
+    // 2026-08-28은 금요일 (아래 요일 계산 기준)
+    private static final LocalDate FRIDAY = LocalDate.of(2026, 8, 28);
+    private static final LocalDate WEDNESDAY = LocalDate.of(2026, 8, 26);
+    private static final LocalDate TUESDAY = LocalDate.of(2026, 8, 25);
+
     @Test
     @DisplayName("DAILY 알림은 요일과 무관하게 발송 대상이다")
     void isDue_daily() {
-        assertThat(dispatchService.isDue(schedule(1L, RepeatType.DAILY, null, null), DayOfWeek.MONDAY)).isTrue();
+        assertThat(dispatchService.isDue(schedule(1L, RepeatType.DAILY, null, null), FRIDAY)).isTrue();
     }
 
     @Test
     @DisplayName("WEEKLY 알림은 오늘 요일이 목록에 있을 때만 발송 대상이다")
     void isDue_weekly() {
         QuoteSchedule s = schedule(1L, RepeatType.WEEKLY, "MON,WED,FRI", null);
-        assertThat(dispatchService.isDue(s, DayOfWeek.WEDNESDAY)).isTrue();
-        assertThat(dispatchService.isDue(s, DayOfWeek.TUESDAY)).isFalse();
+        assertThat(dispatchService.isDue(s, WEDNESDAY)).isTrue();
+        assertThat(dispatchService.isDue(s, TUESDAY)).isFalse();
     }
 
     @Test
-    @DisplayName("ONCE 알림은 아직 발송된 적 없을 때만 발송 대상이다")
+    @DisplayName("ONCE 알림은 지정한 날짜에, 아직 발송된 적 없을 때만 발송 대상이다")
     void isDue_once() {
-        assertThat(dispatchService.isDue(schedule(1L, RepeatType.ONCE, null, null), DayOfWeek.MONDAY)).isTrue();
-        assertThat(dispatchService.isDue(
-                schedule(1L, RepeatType.ONCE, null, LocalDateTime.of(2026, 8, 27, 8, 0)), DayOfWeek.MONDAY)).isFalse();
+        QuoteSchedule once = schedule(1L, RepeatType.ONCE, null, null);
+        ReflectionTestUtils.setField(once, "sendDate", FRIDAY);
+
+        // 지정 날짜 + 미발송 → 발송 대상
+        assertThat(dispatchService.isDue(once, FRIDAY)).isTrue();
+        // 다른 날짜면 발송 대상 아님
+        assertThat(dispatchService.isDue(once, WEDNESDAY)).isFalse();
+
+        // 지정 날짜여도 이미 발송됐으면 대상 아님
+        QuoteSchedule sent = schedule(1L, RepeatType.ONCE, null, LocalDateTime.of(2026, 8, 28, 8, 0));
+        ReflectionTestUtils.setField(sent, "sendDate", FRIDAY);
+        assertThat(dispatchService.isDue(sent, FRIDAY)).isFalse();
+
+        // sendDate가 없으면(구 데이터) 발송하지 않는다
+        QuoteSchedule noDate = schedule(1L, RepeatType.ONCE, null, null);
+        assertThat(dispatchService.isDue(noDate, FRIDAY)).isFalse();
     }
 
     @Test

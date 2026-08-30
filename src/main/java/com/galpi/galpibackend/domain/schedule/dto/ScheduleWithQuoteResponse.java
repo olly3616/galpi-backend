@@ -5,6 +5,7 @@ import com.galpi.galpibackend.domain.quote.entity.Quote;
 import com.galpi.galpibackend.domain.schedule.entity.QuoteSchedule;
 import com.galpi.galpibackend.domain.schedule.entity.RepeatType;
 import com.galpi.galpibackend.domain.work.dto.WorkBrief;
+import java.time.LocalDate;
 import java.time.LocalTime;
 
 /**
@@ -16,6 +17,7 @@ public record ScheduleWithQuoteResponse(
         LocalTime sendTime,
         RepeatType repeatType,
         String daysOfWeek,
+        LocalDate sendDate,
         boolean isActive,
         QuoteBrief quote
 ) {
@@ -41,6 +43,7 @@ public record ScheduleWithQuoteResponse(
                 schedule.getSendTime(),
                 schedule.getRepeatType(),
                 schedule.getDaysOfWeek(),
+                schedule.getSendDate(),
                 schedule.isActive(),
                 quoteBrief
         );

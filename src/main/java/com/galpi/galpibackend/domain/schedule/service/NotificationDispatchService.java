@@ -37,13 +37,12 @@ public class NotificationDispatchService {
     public int dispatchDue(LocalDateTime now) {
         LocalTime sendTime = now.toLocalTime().truncatedTo(ChronoUnit.MINUTES);
         LocalDate today = now.toLocalDate();
-        DayOfWeek dayOfWeek = today.getDayOfWeek();
 
         List<QuoteSchedule> candidates = scheduleRepository.findActiveBySendTimeWithQuote(sendTime);
 
         int dispatched = 0;
         for (QuoteSchedule schedule : candidates) {
-            if (alreadySentToday(schedule, today) || !isDue(schedule, dayOfWeek)) {
+            if (alreadySentToday(schedule, today) || !isDue(schedule, today)) {
                 continue;
             }
             try {
@@ -61,11 +60,12 @@ public class NotificationDispatchService {
                 && schedule.getLastSentAt().toLocalDate().equals(today);
     }
 
-    boolean isDue(QuoteSchedule schedule, DayOfWeek dayOfWeek) {
+    boolean isDue(QuoteSchedule schedule, LocalDate today) {
         return switch (schedule.getRepeatType()) {
             case DAILY -> true;
-            case WEEKLY -> matchesDayOfWeek(schedule.getDaysOfWeek(), dayOfWeek);
-            case ONCE -> schedule.getLastSentAt() == null;
+            case WEEKLY -> matchesDayOfWeek(schedule.getDaysOfWeek(), today.getDayOfWeek());
+            // ONCE는 지정된 날짜(sendDate)에, 아직 발송된 적 없을 때만 발송한다.
+            case ONCE -> schedule.getLastSentAt() == null && today.equals(schedule.getSendDate());
         };
     }
 
