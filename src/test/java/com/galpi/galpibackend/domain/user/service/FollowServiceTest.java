@@ -63,6 +63,49 @@ class FollowServiceTest {
     }
 
     @Test
+    @DisplayName("팔로워 목록은 각 사용자에 대해 내가 팔로우 중인지 표시한다")
+    void getFollowers_marksFollowing() {
+        given(userRepository.existsById(2L)).willReturn(true);
+        given(followRepository.findFollowers(eq(2L), any()))
+                .willReturn(new PageImpl<>(List.of(userWithId(3L, "책벌레"), userWithId(4L, "책친구"))));
+        given(followRepository.findFollowingIdsIn(1L, List.of(3L, 4L))).willReturn(List.of(4L));
+
+        PageResponse<UserSearchItem> response = followService.getFollowers(1L, 2L, 0, 20);
+
+        assertThat(response.items()).hasSize(2);
+        assertThat(response.items().get(0).userId()).isEqualTo(3L);
+        assertThat(response.items().get(0).isFollowing()).isFalse();
+        assertThat(response.items().get(1).userId()).isEqualTo(4L);
+        assertThat(response.items().get(1).isFollowing()).isTrue();
+    }
+
+    @Test
+    @DisplayName("팔로잉 목록도 페이지네이션해 반환한다")
+    void getFollowing_returnsList() {
+        given(userRepository.existsById(2L)).willReturn(true);
+        given(followRepository.findFollowing(eq(2L), any()))
+                .willReturn(new PageImpl<>(List.of(userWithId(5L, "이웃"))));
+        given(followRepository.findFollowingIdsIn(1L, List.of(5L))).willReturn(List.of());
+
+        PageResponse<UserSearchItem> response = followService.getFollowing(1L, 2L, 0, 20);
+
+        assertThat(response.items()).hasSize(1);
+        assertThat(response.items().get(0).userId()).isEqualTo(5L);
+        assertThat(response.items().get(0).isFollowing()).isFalse();
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 사용자의 팔로워 목록을 조회하면 NOT_FOUND 예외를 던진다")
+    void getFollowers_targetNotFound() {
+        given(userRepository.existsById(99L)).willReturn(false);
+
+        assertThatThrownBy(() -> followService.getFollowers(1L, 99L, 0, 20))
+                .isInstanceOf(CustomException.class)
+                .extracting(e -> ((CustomException) e).getErrorCode())
+                .isEqualTo(ErrorCode.NOT_FOUND);
+    }
+
+    @Test
     @DisplayName("검색어의 LIKE 와일드카드(%,_,\\)를 이스케이프해 조회한다")
     void searchUsers_escapesLikeWildcards() {
         given(userRepository.searchByNickname(eq("100\\% \\_a\\\\b"), eq(1L), any()))
