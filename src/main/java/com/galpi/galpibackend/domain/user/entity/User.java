@@ -34,11 +34,30 @@ public class User extends BaseTimeEntity {
     @Column(length = 500)
     private String bio;
 
+    @Column(length = 1024)
+    private String profileImageUrl;
+
     @Builder
-    private User(String email, String password, String nickname, String bio) {
+    private User(String email, String password, String nickname, String bio, String profileImageUrl) {
         this.email = email;
         this.password = password;
         this.nickname = nickname;
         this.bio = bio;
+        this.profileImageUrl = profileImageUrl;
+    }
+
+    /**
+     * 프로필 부분 수정. null이 아닌 필드만 변경한다(닉네임 중복 검사는 서비스에서 수행).
+     */
+    public void updateProfile(String nickname, String bio, String profileImageUrl) {
+        if (nickname != null) {
+            this.nickname = nickname;
+        }
+        if (bio != null) {
+            this.bio = bio;
+        }
+        if (profileImageUrl != null) {
+            this.profileImageUrl = profileImageUrl;
+        }
     }
 }

@@ -54,28 +54,34 @@ public class FeedService {
         }
 
         List<Long> quoteIds = quotes.stream().map(Quote::getId).toList();
-        Map<Long, String> nicknames = loadNicknames(quotes);
+        Map<Long, User> authors = loadAuthors(quotes);
         Map<Long, Long> likeCounts = loadLikeCounts(quoteIds);
         Set<Long> likedQuoteIds = Set.copyOf(likeRepository.findLikedQuoteIdsIn(userId, quoteIds));
 
         List<FeedItem> items = quotes.stream()
-                .map(quote -> new FeedItem(
-                        quote.getId(),
-                        quote.getContent(),
-                        quote.getCharacterName(),
-                        new Author(quote.getUserId(), nicknames.getOrDefault(quote.getUserId(), "")),
-                        WorkSource.from(quote.getWork()),
-                        likeCounts.getOrDefault(quote.getId(), 0L),
-                        likedQuoteIds.contains(quote.getId())))
+                .map(quote -> {
+                    User author = authors.get(quote.getUserId());
+                    return new FeedItem(
+                            quote.getId(),
+                            quote.getContent(),
+                            quote.getCharacterName(),
+                            new Author(
+                                    quote.getUserId(),
+                                    author != null ? author.getNickname() : "",
+                                    author != null ? author.getProfileImageUrl() : null),
+                            WorkSource.from(quote.getWork()),
+                            likeCounts.getOrDefault(quote.getId(), 0L),
+                            likedQuoteIds.contains(quote.getId()));
+                })
                 .toList();
 
         return PageResponse.from(quotePage, items);
     }
 
-    private Map<Long, String> loadNicknames(List<Quote> quotes) {
+    private Map<Long, User> loadAuthors(List<Quote> quotes) {
         List<Long> authorIds = quotes.stream().map(Quote::getUserId).distinct().toList();
         return userRepository.findAllById(authorIds).stream()
-                .collect(Collectors.toMap(User::getId, User::getNickname));
+                .collect(Collectors.toMap(User::getId, user -> user));
     }
 
     private Map<Long, Long> loadLikeCounts(List<Long> quoteIds) {

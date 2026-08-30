@@ -1,7 +1,9 @@
 package com.galpi.galpibackend.domain.user.controller;
 
 import com.galpi.galpibackend.domain.user.dto.FollowResponse;
+import com.galpi.galpibackend.domain.user.dto.MyProfileResponse;
 import com.galpi.galpibackend.domain.user.dto.ProfileResponse;
+import com.galpi.galpibackend.domain.user.dto.UpdateProfileRequest;
 import com.galpi.galpibackend.domain.user.dto.UserSearchItem;
 import com.galpi.galpibackend.domain.user.service.FollowService;
 import com.galpi.galpibackend.domain.user.service.ProfileService;
@@ -11,13 +13,16 @@ import com.galpi.galpibackend.global.web.PageResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -36,7 +41,24 @@ public class UserController {
         this.profileService = profileService;
     }
 
-    @Operation(summary = "사용자 검색", description = "닉네임 부분 일치로 다른 사용자를 검색합니다(본인 제외). 각 결과에 팔로우 여부 포함.")
+    @Operation(summary = "내 프로필 조회",
+            description = "로그인한 본인의 프로필과 팔로워/팔로잉/책/문장 수를 조회합니다. (아바타 표시에 profileImageUrl 사용)")
+    @GetMapping("/me")
+    public ResponseEntity<MyProfileResponse> getMyProfile(@CurrentUserId Long userId) {
+        return ResponseEntity.ok(profileService.getMyProfile(userId));
+    }
+
+    @Operation(summary = "내 프로필 수정",
+            description = "닉네임·소개·프로필 이미지 URL을 부분 수정합니다. 전달한 필드만 변경됩니다. "
+                    + "profileImageUrl은 /api/images로 업로드해 받은 url을 넣으세요. 닉네임 중복 시 409.")
+    @PatchMapping("/me")
+    public ResponseEntity<MyProfileResponse> updateMyProfile(
+            @CurrentUserId Long userId,
+            @Valid @RequestBody UpdateProfileRequest request) {
+        return ResponseEntity.ok(profileService.updateMyProfile(userId, request));
+    }
+
+    @Operation(summary = "사용자 검색", description = "닉네임 부분 일치로 다른 사용자를 검색합니다(본인 제외). 각 결과에 팔로우 여부·아바타(profileImageUrl) 포함.")
     @GetMapping("/search")
     public ResponseEntity<PageResponse<UserSearchItem>> searchUsers(
             @CurrentUserId Long userId,

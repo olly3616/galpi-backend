@@ -14,7 +14,8 @@ public record FeedItem(
 
     public record Author(
             Long userId,
-            String nickname
+            String nickname,
+            String profileImageUrl
     ) {
     }
 }

@@ -1,11 +1,14 @@
 package com.galpi.galpibackend.domain.user.service;
 
+import com.galpi.galpibackend.domain.bookshelf.repository.BookshelfRepository;
 import com.galpi.galpibackend.domain.follow.repository.FollowRepository;
 import com.galpi.galpibackend.domain.quote.entity.Quote;
 import com.galpi.galpibackend.domain.quote.entity.Visibility;
 import com.galpi.galpibackend.domain.quote.repository.QuoteRepository;
+import com.galpi.galpibackend.domain.user.dto.MyProfileResponse;
 import com.galpi.galpibackend.domain.user.dto.ProfileQuote;
 import com.galpi.galpibackend.domain.user.dto.ProfileResponse;
+import com.galpi.galpibackend.domain.user.dto.UpdateProfileRequest;
 import com.galpi.galpibackend.domain.user.entity.User;
 import com.galpi.galpibackend.domain.user.repository.UserRepository;
 import com.galpi.galpibackend.domain.work.dto.WorkSource;
@@ -25,12 +28,14 @@ public class ProfileService {
     private final UserRepository userRepository;
     private final FollowRepository followRepository;
     private final QuoteRepository quoteRepository;
+    private final BookshelfRepository bookshelfRepository;
 
     public ProfileService(UserRepository userRepository, FollowRepository followRepository,
-                          QuoteRepository quoteRepository) {
+                          QuoteRepository quoteRepository, BookshelfRepository bookshelfRepository) {
         this.userRepository = userRepository;
         this.followRepository = followRepository;
         this.quoteRepository = quoteRepository;
+        this.bookshelfRepository = bookshelfRepository;
     }
 
     @Transactional(readOnly = true)
@@ -63,10 +68,49 @@ public class ProfileService {
                 target.getId(),
                 target.getNickname(),
                 target.getBio(),
+                target.getProfileImageUrl(),
                 followerCount,
                 followingCount,
                 isFollowing,
                 quotes
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public MyProfileResponse getMyProfile(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
+        return toMyProfile(user);
+    }
+
+    @Transactional
+    public MyProfileResponse updateMyProfile(Long userId, UpdateProfileRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
+
+        // 닉네임을 실제로 바꾸는 경우에만 중복 검사(본인 현재 닉네임은 통과)
+        if (request.nickname() != null && !request.nickname().equals(user.getNickname())
+                && userRepository.existsByNickname(request.nickname())) {
+            throw new CustomException(ErrorCode.NICKNAME_DUPLICATED);
+        }
+        user.updateProfile(request.nickname(), request.bio(), request.profileImageUrl());
+        return toMyProfile(user);
+    }
+
+    private MyProfileResponse toMyProfile(User user) {
+        long followerCount = followRepository.countByFollowingId(user.getId());
+        long followingCount = followRepository.countByFollowerId(user.getId());
+        long bookCount = bookshelfRepository.countByUserId(user.getId());
+        long quoteCount = quoteRepository.countByUserId(user.getId());
+        return new MyProfileResponse(
+                user.getId(),
+                user.getNickname(),
+                user.getBio(),
+                user.getProfileImageUrl(),
+                followerCount,
+                followingCount,
+                bookCount,
+                quoteCount
         );
     }
 

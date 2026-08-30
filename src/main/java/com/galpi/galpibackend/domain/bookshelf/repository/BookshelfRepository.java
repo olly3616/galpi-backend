@@ -13,4 +13,6 @@ public interface BookshelfRepository extends JpaRepository<Bookshelf, Long> {
     Optional<Bookshelf> findByUserIdAndWorkId(Long userId, Long workId);
 
     Page<Bookshelf> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
+
+    long countByUserId(Long userId);
 }
