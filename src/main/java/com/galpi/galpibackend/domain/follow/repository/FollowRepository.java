@@ -1,8 +1,11 @@
 package com.galpi.galpibackend.domain.follow.repository;
 
 import com.galpi.galpibackend.domain.follow.entity.Follow;
+import com.galpi.galpibackend.domain.user.entity.User;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -30,4 +33,22 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
      */
     @Query("select f.followingId from Follow f where f.followerId = :followerId")
     List<Long> findFollowingIds(@Param("followerId") Long followerId);
+
+    /**
+     * targetId를 팔로우하는 사용자들(팔로워 목록). 최근 팔로우한 순.
+     */
+    @Query(value = "select u from Follow f, User u "
+            + "where f.followingId = :targetId and u.id = f.followerId "
+            + "order by f.id desc",
+            countQuery = "select count(f) from Follow f where f.followingId = :targetId")
+    Page<User> findFollowers(@Param("targetId") Long targetId, Pageable pageable);
+
+    /**
+     * targetId가 팔로우하는 사용자들(팔로잉 목록). 최근 팔로우한 순.
+     */
+    @Query(value = "select u from Follow f, User u "
+            + "where f.followerId = :targetId and u.id = f.followingId "
+            + "order by f.id desc",
+            countQuery = "select count(f) from Follow f where f.followerId = :targetId")
+    Page<User> findFollowing(@Param("targetId") Long targetId, Pageable pageable);
 }

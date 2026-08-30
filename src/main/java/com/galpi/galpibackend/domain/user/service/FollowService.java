@@ -65,6 +65,43 @@ public class FollowService {
                 .replace("_", "\\_");
     }
 
+    @Transactional(readOnly = true)
+    public PageResponse<UserSearchItem> getFollowers(Long requesterId, Long targetId, int page, int size) {
+        if (!userRepository.existsById(targetId)) {
+            throw new CustomException(ErrorCode.NOT_FOUND);
+        }
+        Page<User> userPage = followRepository.findFollowers(targetId, PageRequest.of(page, size));
+        return toUserItems(requesterId, userPage);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<UserSearchItem> getFollowing(Long requesterId, Long targetId, int page, int size) {
+        if (!userRepository.existsById(targetId)) {
+            throw new CustomException(ErrorCode.NOT_FOUND);
+        }
+        Page<User> userPage = followRepository.findFollowing(targetId, PageRequest.of(page, size));
+        return toUserItems(requesterId, userPage);
+    }
+
+    // 목록의 각 사용자에 대해 "요청자(requester)가 그를 팔로우 중인지"를 계산해 함께 반환한다.
+    private PageResponse<UserSearchItem> toUserItems(Long requesterId, Page<User> userPage) {
+        List<User> users = userPage.getContent();
+        List<Long> userIds = users.stream().map(User::getId).toList();
+        Set<Long> followingIds = userIds.isEmpty()
+                ? Set.of()
+                : Set.copyOf(followRepository.findFollowingIdsIn(requesterId, userIds));
+
+        List<UserSearchItem> items = users.stream()
+                .map(user -> new UserSearchItem(
+                        user.getId(),
+                        user.getNickname(),
+                        user.getBio(),
+                        user.getProfileImageUrl(),
+                        followingIds.contains(user.getId())))
+                .toList();
+        return PageResponse.from(userPage, items);
+    }
+
     @Transactional
     public FollowResponse follow(Long userId, Long targetId) {
         if (userId.equals(targetId)) {

@@ -79,6 +79,28 @@ public class UserController {
         return ResponseEntity.ok(profileService.getProfile(requesterId, userId, page, size));
     }
 
+    @Operation(summary = "팔로워 목록",
+            description = "대상 사용자(userId)를 팔로우하는 사용자 목록을 페이지네이션해 반환합니다. 각 항목에 내가 그 사람을 팔로우 중인지(isFollowing) 포함.")
+    @GetMapping("/{userId}/followers")
+    public ResponseEntity<PageResponse<UserSearchItem>> getFollowers(
+            @CurrentUserId Long requesterId,
+            @Parameter(description = "대상 사용자 ID") @PathVariable Long userId,
+            @Parameter(description = "페이지 번호(0부터)") @RequestParam(defaultValue = ApiPaging.DEFAULT_PAGE) @Min(0) int page,
+            @Parameter(description = "페이지당 개수") @RequestParam(defaultValue = ApiPaging.DEFAULT_SIZE) @Min(1) int size) {
+        return ResponseEntity.ok(followService.getFollowers(requesterId, userId, page, size));
+    }
+
+    @Operation(summary = "팔로잉 목록",
+            description = "대상 사용자(userId)가 팔로우하는 사용자 목록을 페이지네이션해 반환합니다. 각 항목에 내가 그 사람을 팔로우 중인지(isFollowing) 포함.")
+    @GetMapping("/{userId}/following")
+    public ResponseEntity<PageResponse<UserSearchItem>> getFollowing(
+            @CurrentUserId Long requesterId,
+            @Parameter(description = "대상 사용자 ID") @PathVariable Long userId,
+            @Parameter(description = "페이지 번호(0부터)") @RequestParam(defaultValue = ApiPaging.DEFAULT_PAGE) @Min(0) int page,
+            @Parameter(description = "페이지당 개수") @RequestParam(defaultValue = ApiPaging.DEFAULT_SIZE) @Min(1) int size) {
+        return ResponseEntity.ok(followService.getFollowing(requesterId, userId, page, size));
+    }
+
     @Operation(summary = "팔로우", description = "대상 사용자를 팔로우합니다. 자기 자신은 불가, 이미 팔로우 중이면 멱등 처리.")
     @PostMapping("/{userId}/follow")
     public ResponseEntity<FollowResponse> follow(
