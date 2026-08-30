@@ -14,6 +14,8 @@ public enum ErrorCode {
     ALREADY_IN_SHELF(HttpStatus.CONFLICT, "이미 책장에 있는 책입니다."),
     ALREADY_LIKED(HttpStatus.CONFLICT, "이미 좋아요한 대사입니다."),
     NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다."),
+    INVALID_IMAGE(HttpStatus.BAD_REQUEST, "이미지 파일(jpg/png/webp/gif)만 업로드할 수 있습니다."),
+    IMAGE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "이미지 업로드에 실패했습니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
 
     private final HttpStatus status;

@@ -1,6 +1,10 @@
 spring:
   application:
     name: galpi-backend
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
   datasource:
     url: jdbc:mysql://localhost:3306/galpi
     username: root
@@ -23,6 +27,13 @@ jwt:
 
 kakao:
   rest-api-key: ${KAKAO_REST_API_KEY:}
+
+aws:
+  region: ${AWS_REGION:ap-northeast-2}
+  s3:
+    # 표지 이미지 업로드용 S3 버킷명. 자격증명(AccessKey/SecretKey)은
+    # AWS SDK 기본 체인이 환경변수(AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY)에서 읽는다.
+    bucket: ${AWS_S3_BUCKET:}
 
 cors:
   # 웹 프론트엔드 출처 허용 목록. 실제 배포 도메인을 추가하세요.
