@@ -18,7 +18,6 @@ import com.galpi.galpibackend.domain.like.repository.LikeRepository;
 import com.galpi.galpibackend.domain.quote.repository.QuoteRepository;
 import com.galpi.galpibackend.domain.schedule.repository.QuoteScheduleRepository;
 import com.galpi.galpibackend.domain.work.entity.BookSource;
-import com.galpi.galpibackend.domain.work.entity.BookType;
 import com.galpi.galpibackend.domain.work.entity.Work;
 import com.galpi.galpibackend.domain.work.repository.WorkRepository;
 import com.galpi.galpibackend.global.error.CustomException;
@@ -55,7 +54,6 @@ class QuoteServiceTest {
     private Work workWithId(long id) {
         Work work = Work.builder()
                 .source(BookSource.API)
-                .type(BookType.NOVEL)
                 .title("데미안")
                 .author("헤르만 헤세")
                 .build();

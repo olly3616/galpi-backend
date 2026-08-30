@@ -18,7 +18,6 @@ import com.galpi.galpibackend.domain.quote.repository.QuoteRepository;
 import com.galpi.galpibackend.domain.user.entity.User;
 import com.galpi.galpibackend.domain.user.repository.UserRepository;
 import com.galpi.galpibackend.domain.work.entity.BookSource;
-import com.galpi.galpibackend.domain.work.entity.BookType;
 import com.galpi.galpibackend.domain.work.entity.Work;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -50,7 +49,7 @@ class FeedServiceTest {
     private FeedService feedService;
 
     private Quote quoteBy(long quoteId, long authorId) {
-        Work work = Work.builder().source(BookSource.API).type(BookType.NOVEL)
+        Work work = Work.builder().source(BookSource.API)
                 .title("데미안").author("헤르만 헤세").build();
         ReflectionTestUtils.setField(work, "id", 10L);
         Quote quote = Quote.builder().userId(authorId).work(work)

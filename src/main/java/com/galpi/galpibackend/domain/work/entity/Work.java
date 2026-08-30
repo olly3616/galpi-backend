@@ -31,10 +31,6 @@ public class Work extends BaseTimeEntity {
     @Column(nullable = false, length = 20)
     private BookSource source;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private BookType type;
-
     @Column(nullable = false, length = 500)
     private String title;
 
@@ -55,10 +51,9 @@ public class Work extends BaseTimeEntity {
     private Long ownerUserId;
 
     @Builder
-    private Work(BookSource source, BookType type, String title, String author,
+    private Work(BookSource source, String title, String author,
                  String publisher, String coverUrl, String isbn, Long ownerUserId) {
         this.source = source;
-        this.type = type;
         this.title = title;
         this.author = author;
         this.publisher = publisher;
