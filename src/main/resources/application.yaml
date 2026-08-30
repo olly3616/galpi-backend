@@ -9,6 +9,8 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: false
+    # 응답을 서비스 계층에서 DTO로 변환하고 fetch join을 쓰므로 OSIV 비활성화(커넥션 조기 반환).
+    open-in-view: false
     properties:
       hibernate:
         format_sql: true
