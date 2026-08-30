@@ -1,0 +1,26 @@
+# 스테이징(staging) 프로파일. SPRING_PROFILES_ACTIVE=staging 로 활성화.
+# 운영과 유사하게 잠그되, 프론트가 API 문서를 볼 수 있도록 Swagger는 켜 둔다.
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+
+# 프론트 협업용으로 Swagger 노출(스테이징 한정).
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+logging:
+  level:
+    root: INFO
+    org.hibernate.SQL: WARN
+
+# 스테이징 프론트엔드 도메인. 실제 도메인으로 교체할 것.
+cors:
+  allowed-origins:
+    - https://staging.galpi.example.com
