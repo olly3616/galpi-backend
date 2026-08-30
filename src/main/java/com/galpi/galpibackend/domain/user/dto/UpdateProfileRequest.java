@@ -1,6 +1,7 @@
 package com.galpi.galpibackend.domain.user.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -17,8 +18,12 @@ public record UpdateProfileRequest(
         @Size(max = 500, message = "소개는 500자 이하여야 합니다.")
         String bio,
 
-        @Schema(description = "프로필 이미지 URL (선택). /api/images로 업로드해 받은 url을 넣습니다.",
+        @Schema(description = "프로필 이미지 URL (선택, 1024자 이하). /api/images로 업로드해 받은 url을 넣습니다. "
+                + "빈 문자열이면 이미지를 비웁니다.",
                 requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+        @Size(max = 1024, message = "프로필 이미지 URL은 1024자 이하여야 합니다.")
+        // 타 사용자에게 아바타로 노출되는 값이므로 http(s):// URL(또는 비우기용 빈 문자열)만 허용한다.
+        @Pattern(regexp = "^(https?://.+)?$", message = "프로필 이미지 URL은 http(s):// 형식이어야 합니다.")
         String profileImageUrl
 ) {
 }

@@ -32,10 +32,14 @@ public class WorkController {
         this.quoteService = quoteService;
     }
 
-    @Operation(summary = "책 상세 정보", description = "책 한 권의 기본 정보(제목·저자·표지·유형·출처)를 조회합니다.")
+    @Operation(summary = "책 상세 정보",
+            description = "책 한 권의 기본 정보(제목·저자·표지·출처)를 조회합니다. "
+                    + "검색으로 담은 API 책은 누구나, 직접 등록한 책은 등록한 본인만 조회할 수 있습니다.")
     @GetMapping("/{workId}")
-    public ResponseEntity<WorkResponse> getWork(@Parameter(description = "책 ID") @PathVariable Long workId) {
-        return ResponseEntity.ok(workService.getWork(workId));
+    public ResponseEntity<WorkResponse> getWork(
+            @CurrentUserId Long userId,
+            @Parameter(description = "책 ID") @PathVariable Long workId) {
+        return ResponseEntity.ok(workService.getWork(userId, workId));
     }
 
     @Operation(summary = "책 상세 = 대사 모아보기",

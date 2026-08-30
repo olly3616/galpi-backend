@@ -41,6 +41,10 @@ public class DeviceToken extends BaseTimeEntity {
         this.platform = platform;
     }
 
+    public boolean isOwnedBy(Long userId) {
+        return this.userId.equals(userId);
+    }
+
     /**
      * 이미 등록된 토큰이 다른 사용자/플랫폼으로 재사용될 때 소유자 정보를 갱신한다.
      * (같은 기기에서 다른 계정으로 재로그인하는 경우)
