@@ -13,6 +13,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import lombok.AccessLevel;
@@ -48,6 +49,9 @@ public class QuoteSchedule extends BaseTimeEntity {
     @Column(length = 50)
     private String daysOfWeek;
 
+    // ONCE일 때 발송할 특정 날짜. DAILY/WEEKLY에서는 사용하지 않아 null.
+    private LocalDate sendDate;
+
     @Column(nullable = false)
     private boolean isActive;
 
@@ -55,12 +59,13 @@ public class QuoteSchedule extends BaseTimeEntity {
 
     @Builder
     private QuoteSchedule(Long userId, Quote quote, LocalTime sendTime, RepeatType repeatType,
-                          String daysOfWeek, boolean isActive) {
+                          String daysOfWeek, LocalDate sendDate, boolean isActive) {
         this.userId = userId;
         this.quote = quote;
         this.sendTime = sendTime;
         this.repeatType = repeatType;
         this.daysOfWeek = daysOfWeek;
+        this.sendDate = sendDate;
         this.isActive = isActive;
     }
 
@@ -68,7 +73,8 @@ public class QuoteSchedule extends BaseTimeEntity {
         return this.userId.equals(userId);
     }
 
-    public void update(LocalTime sendTime, RepeatType repeatType, String daysOfWeek, Boolean isActive) {
+    public void update(LocalTime sendTime, RepeatType repeatType, String daysOfWeek,
+                       LocalDate sendDate, Boolean isActive) {
         if (sendTime != null) {
             this.sendTime = sendTime;
         }
@@ -77,6 +83,9 @@ public class QuoteSchedule extends BaseTimeEntity {
         }
         if (daysOfWeek != null) {
             this.daysOfWeek = daysOfWeek;
+        }
+        if (sendDate != null) {
+            this.sendDate = sendDate;
         }
         if (isActive != null) {
             this.isActive = isActive;

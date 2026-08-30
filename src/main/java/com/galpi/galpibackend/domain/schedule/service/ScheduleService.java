@@ -13,7 +13,9 @@ import com.galpi.galpibackend.global.error.CustomException;
 import com.galpi.galpibackend.global.error.ErrorCode;
 import com.galpi.galpibackend.global.web.PageResponse;
 import com.galpi.galpibackend.global.web.SuccessResponse;
+import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
@@ -43,6 +45,7 @@ public class ScheduleService {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
         validateWeekly(request.repeatType(), request.daysOfWeek());
+        validateOnce(request.repeatType(), request.sendDate(), request.sendDate());
 
         QuoteSchedule schedule = QuoteSchedule.builder()
                 .userId(userId)
@@ -50,6 +53,7 @@ public class ScheduleService {
                 .sendTime(normalizeToMinute(request.sendTime()))
                 .repeatType(request.repeatType())
                 .daysOfWeek(request.daysOfWeek())
+                .sendDate(request.sendDate())
                 .isActive(true)
                 .build();
         scheduleRepository.save(schedule);
@@ -75,13 +79,15 @@ public class ScheduleService {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
 
-        // 변경 후 최종 상태 기준으로 WEEKLY 유효성 검사
+        // 변경 후 최종 상태 기준으로 WEEKLY/ONCE 유효성 검사
         RepeatType effectiveType = request.repeatType() != null ? request.repeatType() : schedule.getRepeatType();
         String effectiveDays = request.daysOfWeek() != null ? request.daysOfWeek() : schedule.getDaysOfWeek();
+        LocalDate effectiveDate = request.sendDate() != null ? request.sendDate() : schedule.getSendDate();
         validateWeekly(effectiveType, effectiveDays);
+        validateOnce(effectiveType, effectiveDate, request.sendDate());
 
         LocalTime sendTime = request.sendTime() != null ? normalizeToMinute(request.sendTime()) : null;
-        schedule.update(sendTime, request.repeatType(), request.daysOfWeek(), request.isActive());
+        schedule.update(sendTime, request.repeatType(), request.daysOfWeek(), request.sendDate(), request.isActive());
 
         return ScheduleResponse.from(schedule);
     }
@@ -111,6 +117,24 @@ public class ScheduleService {
                 throw new CustomException(ErrorCode.VALIDATION_ERROR,
                         "daysOfWeek는 MON,TUE,WED,THU,FRI,SAT,SUN 중 콤마로 구분해 지정해야 합니다.");
             }
+        }
+    }
+
+    private static final ZoneId KST = ZoneId.of("Asia/Seoul");
+
+    /**
+     * ONCE 반복은 발송 날짜(sendDate)가 필요하다. 날짜가 이번 요청으로 새로 지정된 경우
+     * 과거 날짜는 거부한다(이미 저장된 과거 날짜를 그대로 두는 수정은 막지 않는다).
+     */
+    private void validateOnce(RepeatType effectiveType, LocalDate effectiveDate, LocalDate requestedDate) {
+        if (effectiveType != RepeatType.ONCE) {
+            return;
+        }
+        if (effectiveDate == null) {
+            throw new CustomException(ErrorCode.VALIDATION_ERROR, "ONCE 반복은 sendDate가 필요합니다.");
+        }
+        if (requestedDate != null && requestedDate.isBefore(LocalDate.now(KST))) {
+            throw new CustomException(ErrorCode.VALIDATION_ERROR, "sendDate는 오늘 이후여야 합니다.");
         }
     }
 

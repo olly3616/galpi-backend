@@ -19,7 +19,9 @@ import com.galpi.galpibackend.domain.work.entity.BookSource;
 import com.galpi.galpibackend.domain.work.entity.Work;
 import com.galpi.galpibackend.global.error.CustomException;
 import com.galpi.galpibackend.global.error.ErrorCode;
+import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -54,7 +56,7 @@ class ScheduleServiceTest {
     @Test
     @DisplayName("본인 대사에 알림을 생성하면 스케줄을 저장한다")
     void createSchedule_success() {
-        CreateScheduleRequest request = new CreateScheduleRequest(LocalTime.of(8, 0), RepeatType.DAILY, null);
+        CreateScheduleRequest request = new CreateScheduleRequest(LocalTime.of(8, 0), RepeatType.DAILY, null, null);
         given(quoteRepository.findById(100L)).willReturn(Optional.of(quoteOwnedBy(1L)));
         given(scheduleRepository.save(any(QuoteSchedule.class))).willAnswer(invocation -> {
             QuoteSchedule saved = invocation.getArgument(0);
@@ -73,7 +75,7 @@ class ScheduleServiceTest {
     @Test
     @DisplayName("남의 대사에 알림을 생성하려 하면 FORBIDDEN 예외를 던진다")
     void createSchedule_notOwner() {
-        CreateScheduleRequest request = new CreateScheduleRequest(LocalTime.of(8, 0), RepeatType.DAILY, null);
+        CreateScheduleRequest request = new CreateScheduleRequest(LocalTime.of(8, 0), RepeatType.DAILY, null, null);
         given(quoteRepository.findById(100L)).willReturn(Optional.of(quoteOwnedBy(2L)));
 
         assertThatThrownBy(() -> scheduleService.createSchedule(1L, 100L, request))
@@ -87,7 +89,7 @@ class ScheduleServiceTest {
     @Test
     @DisplayName("WEEKLY 알림인데 daysOfWeek가 없으면 VALIDATION_ERROR 예외를 던진다")
     void createSchedule_weeklyWithoutDays() {
-        CreateScheduleRequest request = new CreateScheduleRequest(LocalTime.of(8, 0), RepeatType.WEEKLY, null);
+        CreateScheduleRequest request = new CreateScheduleRequest(LocalTime.of(8, 0), RepeatType.WEEKLY, null, null);
         given(quoteRepository.findById(100L)).willReturn(Optional.of(quoteOwnedBy(1L)));
 
         assertThatThrownBy(() -> scheduleService.createSchedule(1L, 100L, request))
@@ -100,13 +102,58 @@ class ScheduleServiceTest {
     @DisplayName("daysOfWeek에 잘못된 요일 토큰이 있으면 VALIDATION_ERROR 예외를 던진다")
     void createSchedule_invalidDaysOfWeek() {
         CreateScheduleRequest request = new CreateScheduleRequest(
-                LocalTime.of(8, 0), RepeatType.WEEKLY, "MON,FUNDAY");
+                LocalTime.of(8, 0), RepeatType.WEEKLY, "MON,FUNDAY", null);
         given(quoteRepository.findById(100L)).willReturn(Optional.of(quoteOwnedBy(1L)));
 
         assertThatThrownBy(() -> scheduleService.createSchedule(1L, 100L, request))
                 .isInstanceOf(CustomException.class)
                 .extracting(e -> ((CustomException) e).getErrorCode())
                 .isEqualTo(ErrorCode.VALIDATION_ERROR);
+    }
+
+    @Test
+    @DisplayName("ONCE 알림에 sendDate가 없으면 VALIDATION_ERROR 예외를 던진다")
+    void createSchedule_onceWithoutDate() {
+        CreateScheduleRequest request = new CreateScheduleRequest(
+                LocalTime.of(8, 0), RepeatType.ONCE, null, null);
+        given(quoteRepository.findById(100L)).willReturn(Optional.of(quoteOwnedBy(1L)));
+
+        assertThatThrownBy(() -> scheduleService.createSchedule(1L, 100L, request))
+                .isInstanceOf(CustomException.class)
+                .extracting(e -> ((CustomException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
+    }
+
+    @Test
+    @DisplayName("ONCE 알림에 과거 날짜를 지정하면 VALIDATION_ERROR 예외를 던진다")
+    void createSchedule_oncePastDate() {
+        CreateScheduleRequest request = new CreateScheduleRequest(
+                LocalTime.of(8, 0), RepeatType.ONCE, null, LocalDate.of(2000, 1, 1));
+        given(quoteRepository.findById(100L)).willReturn(Optional.of(quoteOwnedBy(1L)));
+
+        assertThatThrownBy(() -> scheduleService.createSchedule(1L, 100L, request))
+                .isInstanceOf(CustomException.class)
+                .extracting(e -> ((CustomException) e).getErrorCode())
+                .isEqualTo(ErrorCode.VALIDATION_ERROR);
+    }
+
+    @Test
+    @DisplayName("ONCE 알림에 미래 날짜를 지정하면 그 날짜를 저장하고 응답에 포함한다")
+    void createSchedule_onceWithDate() {
+        LocalDate future = LocalDate.now(ZoneId.of("Asia/Seoul")).plusDays(7);
+        CreateScheduleRequest request = new CreateScheduleRequest(
+                LocalTime.of(8, 0), RepeatType.ONCE, null, future);
+        given(quoteRepository.findById(100L)).willReturn(Optional.of(quoteOwnedBy(1L)));
+        given(scheduleRepository.save(any(QuoteSchedule.class))).willAnswer(invocation -> {
+            QuoteSchedule saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 1L);
+            return saved;
+        });
+
+        ScheduleResponse response = scheduleService.createSchedule(1L, 100L, request);
+
+        assertThat(response.repeatType()).isEqualTo(RepeatType.ONCE);
+        assertThat(response.sendDate()).isEqualTo(future);
     }
 
     @Test
