@@ -13,6 +13,9 @@ public interface QuoteRepository extends JpaRepository<Quote, Long> {
 
     Page<Quote> findByUserIdAndWorkIdOrderByCreatedAtDesc(Long userId, Long workId, Pageable pageable);
 
+    // 소프트 삭제된 대사는 @SQLRestriction으로 제외되어 카운트에서도 빠진다.
+    long countByUserId(Long userId);
+
     // 출처(work)를 fetch join으로 함께 로딩해 N+1을 방지한다. (프로필 공개 대사, 페이지네이션)
     @Query(value = "select q from Quote q join fetch q.work "
             + "where q.userId = :userId and q.visibility = :visibility "

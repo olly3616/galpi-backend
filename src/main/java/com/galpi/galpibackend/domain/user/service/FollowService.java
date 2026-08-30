@@ -44,6 +44,7 @@ public class FollowService {
                         user.getId(),
                         user.getNickname(),
                         user.getBio(),
+                        user.getProfileImageUrl(),
                         followingIds.contains(user.getId())))
                 .toList();
 

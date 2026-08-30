@@ -8,11 +8,14 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import com.galpi.galpibackend.domain.bookshelf.repository.BookshelfRepository;
 import com.galpi.galpibackend.domain.follow.repository.FollowRepository;
 import com.galpi.galpibackend.domain.quote.entity.Quote;
 import com.galpi.galpibackend.domain.quote.entity.Visibility;
 import com.galpi.galpibackend.domain.quote.repository.QuoteRepository;
+import com.galpi.galpibackend.domain.user.dto.MyProfileResponse;
 import com.galpi.galpibackend.domain.user.dto.ProfileResponse;
+import com.galpi.galpibackend.domain.user.dto.UpdateProfileRequest;
 import com.galpi.galpibackend.domain.user.entity.User;
 import com.galpi.galpibackend.domain.user.repository.UserRepository;
 import com.galpi.galpibackend.domain.work.entity.BookSource;
@@ -41,6 +44,9 @@ class ProfileServiceTest {
 
     @Mock
     private QuoteRepository quoteRepository;
+
+    @Mock
+    private BookshelfRepository bookshelfRepository;
 
     @InjectMocks
     private ProfileService profileService;
@@ -121,5 +127,73 @@ class ProfileServiceTest {
                 .isInstanceOf(CustomException.class)
                 .extracting(e -> ((CustomException) e).getErrorCode())
                 .isEqualTo(ErrorCode.NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("내 프로필 조회는 팔로워/팔로잉/책/문장 카운트를 포함한다")
+    void getMyProfile_returnsCounts() {
+        given(userRepository.findById(1L)).willReturn(Optional.of(userWithId(1L)));
+        given(followRepository.countByFollowingId(1L)).willReturn(7L);
+        given(followRepository.countByFollowerId(1L)).willReturn(8L);
+        given(bookshelfRepository.countByUserId(1L)).willReturn(9L);
+        given(quoteRepository.countByUserId(1L)).willReturn(10L);
+
+        MyProfileResponse response = profileService.getMyProfile(1L);
+
+        assertThat(response.userId()).isEqualTo(1L);
+        assertThat(response.followerCount()).isEqualTo(7L);
+        assertThat(response.followingCount()).isEqualTo(8L);
+        assertThat(response.bookCount()).isEqualTo(9L);
+        assertThat(response.quoteCount()).isEqualTo(10L);
+    }
+
+    @Test
+    @DisplayName("프로필 수정은 전달한 필드만 변경하고 갱신된 값을 반환한다")
+    void updateMyProfile_success() {
+        User user = userWithId(1L);
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(userRepository.existsByNickname("새닉네임")).willReturn(false);
+        given(followRepository.countByFollowingId(1L)).willReturn(2L);
+        given(followRepository.countByFollowerId(1L)).willReturn(3L);
+        given(bookshelfRepository.countByUserId(1L)).willReturn(4L);
+        given(quoteRepository.countByUserId(1L)).willReturn(5L);
+
+        MyProfileResponse response = profileService.updateMyProfile(1L,
+                new UpdateProfileRequest("새닉네임", "새 소개", "https://img/a.jpg"));
+
+        assertThat(response.nickname()).isEqualTo("새닉네임");
+        assertThat(response.bio()).isEqualTo("새 소개");
+        assertThat(response.profileImageUrl()).isEqualTo("https://img/a.jpg");
+        assertThat(user.getNickname()).isEqualTo("새닉네임");
+    }
+
+    @Test
+    @DisplayName("다른 사람이 쓰는 닉네임으로 수정하면 NICKNAME_DUPLICATED 예외를 던진다")
+    void updateMyProfile_nicknameDuplicated() {
+        given(userRepository.findById(1L)).willReturn(Optional.of(userWithId(1L)));
+        given(userRepository.existsByNickname("중복닉")).willReturn(true);
+
+        assertThatThrownBy(() -> profileService.updateMyProfile(1L,
+                new UpdateProfileRequest("중복닉", null, null)))
+                .isInstanceOf(CustomException.class)
+                .extracting(e -> ((CustomException) e).getErrorCode())
+                .isEqualTo(ErrorCode.NICKNAME_DUPLICATED);
+    }
+
+    @Test
+    @DisplayName("현재와 같은 닉네임으로 수정하면 중복 검사를 하지 않는다")
+    void updateMyProfile_sameNicknameSkipsDupCheck() {
+        User user = userWithId(1L); // 닉네임 "책친구"
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(followRepository.countByFollowingId(1L)).willReturn(0L);
+        given(followRepository.countByFollowerId(1L)).willReturn(0L);
+        given(bookshelfRepository.countByUserId(1L)).willReturn(0L);
+        given(quoteRepository.countByUserId(1L)).willReturn(0L);
+
+        MyProfileResponse response = profileService.updateMyProfile(1L,
+                new UpdateProfileRequest("책친구", null, null));
+
+        assertThat(response.nickname()).isEqualTo("책친구");
+        verify(userRepository, never()).existsByNickname(any());
     }
 }
