@@ -1,0 +1,53 @@
+# 갈피 배포용 Compose: Spring Boot(앱) + MySQL 8.
+#
+# - 로컬에서 이미지 직접 빌드:   docker compose up --build
+# - EC2에서 CI가 구운 이미지 사용: docker compose pull && docker compose up -d
+#
+# 비밀값은 같은 폴더의 .env 파일에서 읽는다(깃에 커밋하지 말 것). 예:
+#   DB_PASSWORD=... / JWT_SECRET=... / KAKAO_REST_API_KEY=...
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: galpi
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  app:
+    # CI(GitHub Actions)가 빌드해 푸시하는 이미지. EC2는 이걸 pull만 한다.
+    image: ghcr.io/olly3616/galpi-backend:latest
+    # 로컬에서 `--build` 시 이 디렉터리로 직접 빌드(위 image 태그로 태깅됨).
+    build: .
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: staging
+      # 앱 컨테이너 → mysql 컨테이너(서비스명으로 접속)
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/galpi
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY}
+      # ↓ 선택 기능(안 쓰면 비워둬도 앱은 정상 기동)
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      FCM_ENABLED: ${FCM_ENABLED:-false}
+      FCM_CREDENTIALS_PATH: ${FCM_CREDENTIALS_PATH:-}
+    # FCM을 실제로 켤 경우, 서비스계정 JSON을 컨테이너에 마운트하고 위 경로를 맞춘다:
+    # volumes:
+    #   - ./firebase-service-account.json:/app/firebase-service-account.json:ro
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
