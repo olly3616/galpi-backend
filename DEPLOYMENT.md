@@ -1,54 +1,72 @@
-# 배포 가이드 (AWS EC2 + Docker Compose + GitHub Actions)
+# 배포 가이드 (Oracle Cloud VM + Docker Compose + GitHub Actions + Caddy HTTPS)
 
 `main`에 push하면 → CI(테스트) 통과 시 → GitHub Actions가 이미지를 빌드해 GHCR에 올리고 →
-EC2에 SSH로 접속해 새 이미지로 자동 재기동한다.
+서버에 SSH로 접속해 새 이미지로 자동 재기동한다.
 
 ```
-GitHub(main push) ─► CI 테스트 ─► 이미지 빌드/푸시(GHCR) ─► EC2에서 pull & 재기동
+GitHub(main push) ─► CI 테스트 ─► 이미지 빌드/푸시(GHCR) ─► 서버에서 pull & 재기동
                                                               │
-                                   EC2: docker compose (Spring Boot + MySQL)
+                            서버: docker compose (Caddy ─► Spring Boot ─► MySQL)
 ```
 
-앱은 **staging 프로파일**로 뜬다(Swagger 켜짐, Flyway가 스키마 생성). 스키마 변경은 `src/main/resources/db/migration/V2__*.sql` 처럼 마이그레이션을 추가한다.
+앱은 **staging 프로파일**로 뜬다(Swagger 켜짐, Flyway가 스키마 생성).
+Oracle Cloud **Always Free** VM을 쓰므로 **과금이 없다**(Always Free 자원만 쓰는 한).
 
 ---
 
-## A. EC2 인스턴스 생성 (AWS 콘솔)
+## A. Oracle Cloud VM 생성 (콘솔)
 
-1. **EC2 → 인스턴스 시작**
-   - AMI: **Ubuntu Server 22.04 LTS**
-   - 인스턴스 타입: **t3.small (권장, 2GB)**. 프리티어 t2.micro(1GB)도 가능하나 메모리가 빠듯 → 아래 "스왑" 참고.
-   - 키페어: **새로 생성**해서 `.pem` 파일 다운로드(잃어버리면 접속 불가).
-2. **보안 그룹(방화벽)** 인바운드 규칙:
-   | 포트 | 소스 | 용도 |
+1. **Compute → Instances → Create instance**
+   - 이름: `galpi-server`
+   - 이미지: **Canonical Ubuntu 22.04**
+   - Shape: **VM.Standard.E2.1.Micro** (AMD, **Always Free** 표시, 1 OCPU / 1GB)
+     - (참고: Ampere ARM A1은 24GB까지 무료지만 ARM용 이미지가 필요 → 지금은 AMD micro 권장. ARM 원하면 알려주세요, 멀티아치 빌드 추가해드립니다.)
+   - **SSH 키**: "Generate a key pair for me" → **개인 키(.key) 다운로드**해서 안전히 보관(재발급 불가).
+2. **네트워킹**: 퍼블릭 IP 자동 할당 확인. 생성 후 **퍼블릭 IPv4 주소** 기록.
+3. **방화벽 1 — VCN Security List (인바운드 규칙 추가)**
+   Networking → 해당 VCN → Security Lists → Default → Add Ingress Rules:
+   | 소스 | 포트 | 용도 |
    |---|---|---|
-   | 22 (SSH) | 내 IP | 서버 접속 |
-   | 8080 (TCP) | 0.0.0.0/0 | 앱 API (시연용 공개) |
-   - ⚠ **3306(MySQL)은 절대 열지 말 것.** DB는 컨테이너 내부에서만 접근한다.
-3. 인스턴스의 **퍼블릭 IPv4 주소**를 적어둔다 (예: `3.34.xx.xx`).
+   | 0.0.0.0/0 | 22 | SSH(기본 존재) |
+   | 0.0.0.0/0 | 80 | HTTP(인증서 발급·리다이렉트) |
+   | 0.0.0.0/0 | 443 | HTTPS |
+   | 0.0.0.0/0 | 8080 | 앱(도메인 붙이기 전 직접 접속용) |
+   - ⚠ **3306(MySQL)은 열지 말 것.**
 
 ---
 
 ## B. 서버 초기 세팅 (SSH 접속 후 1회)
 
 ```bash
-# 로컬에서 접속 (.pem 위치에서)
-chmod 400 galpi-key.pem
-ssh -i galpi-key.pem ubuntu@<EC2_퍼블릭_IP>
+# 로컬에서 접속 (다운로드한 키 위치에서)
+chmod 400 galpi-server.key
+ssh -i galpi-server.key ubuntu@<서버_퍼블릭_IP>
 ```
 
 서버 안에서:
 ```bash
-# 1) Docker 설치
-curl -fsSL https://get.docker.com | sudo sh
-sudo usermod -aG docker ubuntu          # sudo 없이 docker 쓰기
-newgrp docker                            # 그룹 즉시 적용(또는 재접속)
+# 1) ⚠ Oracle 필수: 방화벽 2 — 인스턴스 내부 iptables 열기
+#    (Oracle Ubuntu 이미지는 Security List를 열어도 내부 iptables가 막아 접속이 안 된다)
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 8080 -j ACCEPT
+sudo netfilter-persistent save
 
-# 2) 저장소 클론
+# 2) Docker 설치
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker ubuntu
+newgrp docker
+
+# 3) 1GB 메모리 보완용 스왑 2GB (micro 인스턴스 필수)
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
+sudo mkswap /swapfile && sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
+# 4) 저장소 클론
 git clone https://github.com/olly3616/galpi-backend.git
 cd galpi-backend
 
-# 3) 비밀값 파일 작성 (.env — git에 올라가지 않음)
+# 5) 비밀값 파일 작성 (.env — git에 올라가지 않음)
 nano .env
 ```
 
@@ -57,20 +75,10 @@ nano .env
 DB_PASSWORD=강한_DB_비밀번호
 JWT_SECRET=최소_32바이트_이상의_긴_랜덤_문자열
 KAKAO_REST_API_KEY=카카오_REST_키
-# 선택(이미지 업로드 쓰면):
-AWS_REGION=ap-northeast-2
-AWS_S3_BUCKET=버킷명
-AWS_ACCESS_KEY_ID=...
-AWS_SECRET_ACCESS_KEY=...
+# 선택(이미지 업로드 쓰면): AWS_REGION / AWS_S3_BUCKET / AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
 # 선택(FCM 쓰면): FCM_ENABLED=true / FCM_CREDENTIALS_PATH=/app/firebase-service-account.json
+# HTTPS 켤 때만(F단계): DOMAIN=galpi.duckdns.org / COMPOSE_PROFILES=tls
 ```
-
-> **t2.micro(1GB) 사용 시 스왑 추가**(메모리 부족 방지):
-> ```bash
-> sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
-> sudo mkswap /swapfile && sudo swapon /swapfile
-> echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-> ```
 
 ---
 
@@ -81,47 +89,59 @@ GitHub 저장소 → **Settings → Secrets and variables → Actions → New re
 
 | 이름 | 값 |
 |---|---|
-| `EC2_HOST` | EC2 퍼블릭 IP |
-| `EC2_USER` | `ubuntu` |
-| `EC2_SSH_KEY` | `.pem` 파일 **내용 전체** (`-----BEGIN ...` 부터 끝까지) |
+| `SSH_HOST` | 서버 퍼블릭 IP |
+| `SSH_USER` | `ubuntu` |
+| `SSH_KEY` | 다운로드한 개인 키(.key) **내용 전체** |
 
 ### C-2. GHCR 이미지 공개로 전환
-첫 배포로 이미지가 한 번 올라간 뒤, GitHub 프로필 → **Packages → galpi-backend → Package settings → Change visibility → Public** 로 바꾼다.
-(EC2가 로그인 없이 `docker compose pull` 할 수 있게. 이미지에는 비밀값이 들어있지 않다 — 비밀값은 서버 `.env`에서 런타임에만 주입된다.)
+첫 배포로 이미지가 한 번 올라간 뒤, GitHub 프로필 → **Packages → galpi-backend → Package settings → Change visibility → Public**.
+(서버가 로그인 없이 `docker compose pull` 하도록. 이미지에는 비밀값이 없다 — 비밀값은 서버 `.env`에서 런타임에만 주입.)
 
 ---
 
 ## D. 첫 배포
 
-### 방법 1: 서버에서 수동으로 한 번 (권장 — 동작 확인)
 ```bash
-# 서버의 ~/galpi-backend 에서
-docker compose up -d --build     # 처음엔 직접 빌드(이미지 공개 전이라)
+# 서버의 ~/galpi-backend 에서 (처음엔 직접 빌드 — 이미지 공개 전이라)
+docker compose up -d --build
 docker compose logs -f app       # 기동 로그 확인 (Ctrl+C로 빠져나옴)
 ```
-
-### 방법 2: 이후로는 자동
-`main`에 push → CI 통과 → Actions가 알아서 EC2에 재배포.
+이후로는 `main`에 push → CI 통과 → Actions가 자동 재배포.
 
 ---
 
-## E. 동작 확인
+## E. 동작 확인 (HTTP)
 
 ```bash
-# 서버 또는 로컬에서
-curl http://<EC2_퍼블릭_IP>:8080/swagger-ui.html   # 200이면 성공
+curl http://<서버_퍼블릭_IP>:8080/swagger-ui.html   # 200이면 성공
 ```
-- Swagger: `http://<EC2_IP>:8080/swagger-ui.html`
-- 프론트(Expo) API base URL을 `http://<EC2_IP>:8080` 으로 설정 → 참석자 폰에서 접속.
+- Swagger: `http://<서버_IP>:8080/swagger-ui.html`
+- 시연용으로는 여기까지로 충분(프론트 API base URL = `http://<서버_IP>:8080`).
 
 ---
 
-## F. (선택) HTTPS 붙이기 — 나중에
+## F. HTTPS 붙이기 (무료: Caddy + DuckDNS)
 
-지금은 HTTP(공개 IP)로 충분. 제대로 된 도메인+HTTPS가 필요해지면:
-- 무료 도메인(DuckDNS 등) 또는 보유 도메인 연결
-- **Caddy** 리버스 프록시 컨테이너를 compose에 추가하면 자동으로 Let's Encrypt HTTPS 발급
-- 필요 시 그때 도와드림.
+앱스토어 배포 앱은 공개 https가 필수다. 도메인·인증서 모두 무료로 만들 수 있다.
+
+1. **무료 도메인 (DuckDNS)**
+   - https://www.duckdns.org 접속 → 소셜 로그인 → 서브도메인 생성(예: `galpi`)
+   - 그 도메인의 IP를 **서버 퍼블릭 IP**로 지정 → `galpi.duckdns.org` 완성
+   - (커스텀 도메인을 샀다면 A레코드를 서버 IP로 연결하면 동일)
+2. **서버 `.env`에 두 줄 추가**
+   ```dotenv
+   DOMAIN=galpi.duckdns.org
+   COMPOSE_PROFILES=tls
+   ```
+3. **재기동** — Caddy가 함께 뜨며 Let's Encrypt 인증서를 자동 발급
+   ```bash
+   docker compose up -d
+   docker compose logs -f caddy      # "certificate obtained" 뜨면 성공
+   ```
+4. **확인**: `https://galpi.duckdns.org/swagger-ui.html`
+5. 프론트 EAS 환경변수: `EXPO_PUBLIC_API_URL=https://galpi.duckdns.org`
+
+> 인증서 발급은 80/443 포트가 외부에서 닿아야 한다(A·B단계의 Security List + iptables 확인).
 
 ---
 
@@ -129,8 +149,9 @@ curl http://<EC2_퍼블릭_IP>:8080/swagger-ui.html   # 200이면 성공
 
 | 증상 | 확인 |
 |---|---|
-| 앱이 바로 죽음 | `docker compose logs app` — 대개 `.env`의 `JWT_SECRET` 누락(32바이트 미만)/`DB_PASSWORD` 누락 |
-| DB 연결 실패 | mysql 컨테이너 healthy 여부: `docker compose ps` |
-| 메모리 부족(OOM)으로 재시작 반복 | t2.micro면 위 스왑 추가, 또는 t3.small로 상향 |
-| 폰에서 접속 안 됨 | 보안그룹 8080 인바운드 열렸는지, `http://`(https 아님)로 접속하는지 |
+| 폰/브라우저에서 접속 안 됨 | **Oracle 2중 방화벽**: Security List(콘솔) + iptables(B-1) 둘 다 열었는지 |
+| 앱이 바로 죽음 | `docker compose logs app` — 대개 `.env`의 `JWT_SECRET`(32바이트↑)/`DB_PASSWORD` 누락 |
+| 메모리 부족(OOM) 재시작 반복 | B-3 스왑 추가했는지 확인 |
+| DB 연결 실패 | `docker compose ps`로 mysql healthy 확인 |
+| Caddy 인증서 실패 | DOMAIN이 서버 IP를 정확히 가리키는지, 80/443 열렸는지 |
 | GHCR pull 권한 오류 | C-2 이미지 공개 전환 확인 |

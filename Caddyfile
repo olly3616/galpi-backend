@@ -1,0 +1,6 @@
+# Caddy 설정. {$DOMAIN}은 .env의 DOMAIN 값으로 치환된다(예: galpi.duckdns.org).
+# 이 도메인으로 들어오는 https 요청을 내부 앱(8080)으로 전달하고,
+# Let's Encrypt 인증서를 자동 발급·갱신한다(무료). http는 자동으로 https로 리다이렉트된다.
+{$DOMAIN} {
+	reverse_proxy app:8080
+}
