@@ -194,4 +194,22 @@ class QuoteServiceTest {
         assertThat(response.quotes().items().get(0).quoteId()).isEqualTo(100L);
         assertThat(response.quotes().items().get(0).hasSchedule()).isFalse();
     }
+
+    @Test
+    @DisplayName("내 전체 대사 목록은 출처(work)와 알림 설정 여부(hasSchedule)를 포함해 반환한다")
+    void getMyQuotes_success() {
+        given(quoteRepository.findByUserIdWithWork(eq(1L), any()))
+                .willReturn(new PageImpl<>(List.of(quoteWithId(100L, 1L), quoteWithId(101L, 1L))));
+        given(scheduleRepository.findQuoteIdsWithScheduleIn(List.of(100L, 101L)))
+                .willReturn(List.of(100L));
+
+        var response = quoteService.getMyQuotes(1L, 0, 20);
+
+        assertThat(response.items()).hasSize(2);
+        assertThat(response.items().get(0).quoteId()).isEqualTo(100L);
+        assertThat(response.items().get(0).hasSchedule()).isTrue();
+        assertThat(response.items().get(0).work().workId()).isEqualTo(10L);
+        assertThat(response.items().get(1).quoteId()).isEqualTo(101L);
+        assertThat(response.items().get(1).hasSchedule()).isFalse();
+    }
 }

@@ -4,6 +4,7 @@ import com.galpi.galpibackend.domain.quote.entity.Quote;
 import com.galpi.galpibackend.domain.schedule.entity.QuoteSchedule;
 import com.galpi.galpibackend.domain.schedule.notification.NotificationSender;
 import com.galpi.galpibackend.domain.schedule.repository.QuoteScheduleRepository;
+import com.galpi.galpibackend.domain.user.repository.UserRepository;
 import java.time.LocalDateTime;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
@@ -18,11 +19,14 @@ public class ScheduleDispatchExecutor {
 
     private final QuoteScheduleRepository scheduleRepository;
     private final NotificationSender notificationSender;
+    private final UserRepository userRepository;
 
     public ScheduleDispatchExecutor(QuoteScheduleRepository scheduleRepository,
-                                    NotificationSender notificationSender) {
+                                    NotificationSender notificationSender,
+                                    UserRepository userRepository) {
         this.scheduleRepository = scheduleRepository;
         this.notificationSender = notificationSender;
+        this.userRepository = userRepository;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -34,6 +38,14 @@ public class ScheduleDispatchExecutor {
         // 재조회 시점에 이미 오늘 발송되었으면(동시 실행 등) 중복 발송하지 않는다.
         if (schedule.getLastSentAt() != null
                 && schedule.getLastSentAt().toLocalDate().equals(now.toLocalDate())) {
+            return;
+        }
+        // 사용자가 예약 문장 알림을 꺼두었으면 발송하지 않는다(last_sent_at도 기록하지 않아,
+        // 다시 켜면 이후 예약 시각부터 정상 발송된다).
+        boolean alarmOn = userRepository.findById(schedule.getUserId())
+                .map(user -> user.isQuoteAlarm())
+                .orElse(false);
+        if (!alarmOn) {
             return;
         }
         Quote quote = schedule.getQuote();

@@ -1,18 +1,23 @@
 package com.galpi.galpibackend.domain.quote.controller;
 
 import com.galpi.galpibackend.domain.quote.dto.CreateQuoteRequest;
+import com.galpi.galpibackend.domain.quote.dto.MyQuoteItem;
 import com.galpi.galpibackend.domain.quote.dto.QuoteResponse;
 import com.galpi.galpibackend.domain.quote.dto.UpdateQuoteRequest;
 import com.galpi.galpibackend.domain.quote.service.QuoteService;
 import com.galpi.galpibackend.global.security.CurrentUserId;
+import com.galpi.galpibackend.global.web.ApiPaging;
+import com.galpi.galpibackend.global.web.PageResponse;
 import com.galpi.galpibackend.global.web.SuccessResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -20,11 +25,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "대사", description = "책에 기록한 구절(대사)의 작성·조회·수정·삭제. 조회/수정/삭제는 본인 대사만 가능합니다.")
 @RestController
 @RequestMapping("/api/quotes")
+@Validated
 public class QuoteController {
 
     private final QuoteService quoteService;
@@ -40,6 +47,17 @@ public class QuoteController {
                                                      @Valid @RequestBody CreateQuoteRequest request) {
         QuoteResponse response = quoteService.createQuote(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @Operation(summary = "내 전체 대사 목록",
+            description = "작품과 무관하게 내가 기록한 모든 대사를 최신 저장순으로 페이지네이션해 반환합니다. "
+                    + "각 항목에 출처 책(work)과 알림 설정 여부(hasSchedule)가 포함됩니다. (프로필의 '문장' 카운트 탭 대상)")
+    @GetMapping("/me")
+    public ResponseEntity<PageResponse<MyQuoteItem>> getMyQuotes(
+            @CurrentUserId Long userId,
+            @Parameter(description = "페이지 번호(0부터)") @RequestParam(defaultValue = ApiPaging.DEFAULT_PAGE) @Min(0) int page,
+            @Parameter(description = "페이지당 개수") @RequestParam(defaultValue = ApiPaging.DEFAULT_SIZE) @Min(1) int size) {
+        return ResponseEntity.ok(quoteService.getMyQuotes(userId, page, size));
     }
 
     @Operation(summary = "대사 상세 조회", description = "대사 하나의 상세(출처·설정된 알림 포함)를 조회합니다. 본인 대사만 가능합니다.")

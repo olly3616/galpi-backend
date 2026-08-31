@@ -2,7 +2,9 @@ package com.galpi.galpibackend.domain.user.controller;
 
 import com.galpi.galpibackend.domain.user.dto.FollowResponse;
 import com.galpi.galpibackend.domain.user.dto.MyProfileResponse;
+import com.galpi.galpibackend.domain.user.dto.NotificationSettingsResponse;
 import com.galpi.galpibackend.domain.user.dto.ProfileResponse;
+import com.galpi.galpibackend.domain.user.dto.UpdateNotificationSettingsRequest;
 import com.galpi.galpibackend.domain.user.dto.UpdateProfileRequest;
 import com.galpi.galpibackend.domain.user.dto.UserSearchItem;
 import com.galpi.galpibackend.domain.user.service.FollowService;
@@ -56,6 +58,23 @@ public class UserController {
             @CurrentUserId Long userId,
             @Valid @RequestBody UpdateProfileRequest request) {
         return ResponseEntity.ok(profileService.updateMyProfile(userId, request));
+    }
+
+    @Operation(summary = "알림 설정 조회",
+            description = "내 알림 설정(예약 문장 알림 quoteAlarm, 마케팅·소식 marketing)을 조회합니다. 기본값 quoteAlarm=true, marketing=false.")
+    @GetMapping("/me/notification-settings")
+    public ResponseEntity<NotificationSettingsResponse> getNotificationSettings(@CurrentUserId Long userId) {
+        return ResponseEntity.ok(profileService.getNotificationSettings(userId));
+    }
+
+    @Operation(summary = "알림 설정 수정",
+            description = "알림 설정을 부분 수정합니다. 전달한 항목만 변경됩니다. "
+                    + "quoteAlarm=false면 서버가 그 사용자에게 예약 문장 푸시를 보내지 않습니다.")
+    @PatchMapping("/me/notification-settings")
+    public ResponseEntity<NotificationSettingsResponse> updateNotificationSettings(
+            @CurrentUserId Long userId,
+            @Valid @RequestBody UpdateNotificationSettingsRequest request) {
+        return ResponseEntity.ok(profileService.updateNotificationSettings(userId, request));
     }
 
     @Operation(summary = "사용자 검색", description = "닉네임 부분 일치로 다른 사용자를 검색합니다(본인 제외). 각 결과에 팔로우 여부·아바타(profileImageUrl) 포함.")

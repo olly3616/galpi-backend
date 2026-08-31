@@ -37,6 +37,14 @@ public class User extends BaseTimeEntity {
     @Column(length = 1024)
     private String profileImageUrl;
 
+    // 예약 문장 푸시 알림 수신 여부(기본 켜짐). false면 발송 로직에서 제외된다.
+    @Column(nullable = false)
+    private boolean quoteAlarm = true;
+
+    // 마케팅·소식 알림 수신 여부(기본 꺼짐).
+    @Column(nullable = false)
+    private boolean marketing = false;
+
     @Builder
     private User(String email, String password, String nickname, String bio, String profileImageUrl) {
         this.email = email;
@@ -44,6 +52,18 @@ public class User extends BaseTimeEntity {
         this.nickname = nickname;
         this.bio = bio;
         this.profileImageUrl = profileImageUrl;
+    }
+
+    /**
+     * 알림 설정 부분 수정. null이 아닌 항목만 변경한다.
+     */
+    public void updateNotificationSettings(Boolean quoteAlarm, Boolean marketing) {
+        if (quoteAlarm != null) {
+            this.quoteAlarm = quoteAlarm;
+        }
+        if (marketing != null) {
+            this.marketing = marketing;
+        }
     }
 
     /**
