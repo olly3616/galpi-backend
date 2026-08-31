@@ -1,9 +1,12 @@
 # 스테이징(staging) 프로파일. SPRING_PROFILES_ACTIVE=staging 로 활성화.
 # 운영과 유사하게 잠그되, 프론트가 API 문서를 볼 수 있도록 Swagger는 켜 둔다.
 spring:
+  # 스테이징도 운영과 동일하게 Flyway가 스키마를 관리한다.
+  flyway:
+    enabled: true
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
     properties:
       hibernate:
         format_sql: false
