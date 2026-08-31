@@ -34,20 +34,20 @@ jobs:
           tags: ghcr.io/${{ github.repository }}:latest
 
   deploy:
-    name: Deploy to EC2
+    name: Deploy to server (SSH)
     needs: build-and-push
     runs-on: ubuntu-latest
-    # EC2 시크릿이 아직 등록되지 않았으면(초기 세팅 전) 배포 단계를 건너뛴다.
+    # 서버 SSH 시크릿이 아직 등록되지 않았으면(초기 세팅 전) 배포 단계를 건너뛴다.
     env:
-      EC2_HOST: ${{ secrets.EC2_HOST }}
+      SSH_HOST: ${{ secrets.SSH_HOST }}
     steps:
-      - name: SSH into EC2 and roll out
-        if: ${{ env.EC2_HOST != '' }}
+      - name: SSH into server and roll out
+        if: ${{ env.SSH_HOST != '' }}
         uses: appleboy/ssh-action@v1
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
           script: |
             cd ~/galpi-backend
             git pull origin main

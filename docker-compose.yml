@@ -1,7 +1,11 @@
-# 갈피 배포용 Compose: Spring Boot(앱) + MySQL 8.
+# 갈피 배포용 Compose: Spring Boot(앱) + MySQL 8 (+ 선택: Caddy HTTPS).
 #
-# - 로컬에서 이미지 직접 빌드:   docker compose up --build
-# - EC2에서 CI가 구운 이미지 사용: docker compose pull && docker compose up -d
+# - 로컬에서 이미지 직접 빌드:     docker compose up --build
+# - 서버에서 CI가 구운 이미지 사용:  docker compose pull && docker compose up -d
+#
+# HTTPS(도메인 준비 후): .env에 DOMAIN=... 와 COMPOSE_PROFILES=tls 를 넣으면
+# Caddy가 함께 떠서 Let's Encrypt 인증서를 자동 발급한다(무료). 도메인이 없으면
+# Caddy 없이 http://<서버IP>:8080 으로 접속한다(시연·개발용).
 #
 # 비밀값은 같은 폴더의 .env 파일에서 읽는다(깃에 커밋하지 말 것). 예:
 #   DB_PASSWORD=... / JWT_SECRET=... / KAKAO_REST_API_KEY=...
@@ -21,7 +25,7 @@ services:
     restart: unless-stopped
 
   app:
-    # CI(GitHub Actions)가 빌드해 푸시하는 이미지. EC2는 이걸 pull만 한다.
+    # CI(GitHub Actions)가 빌드해 푸시하는 이미지. 서버는 이걸 pull만 한다.
     image: ghcr.io/olly3616/galpi-backend:latest
     # 로컬에서 `--build` 시 이 디렉터리로 직접 빌드(위 image 태그로 태깅됨).
     build: .
@@ -49,5 +53,25 @@ services:
       - "8080:8080"
     restart: unless-stopped
 
+  # HTTPS 리버스 프록시. COMPOSE_PROFILES=tls 일 때만 실행된다.
+  # DOMAIN(예: galpi.duckdns.org)으로 Let's Encrypt 인증서를 자동 발급·갱신한다.
+  caddy:
+    image: caddy:2
+    profiles: ["tls"]
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data      # 발급받은 인증서 보존(재시작해도 재발급 안 함)
+      - caddy-config:/config
+    restart: unless-stopped
+
 volumes:
   mysql-data:
+  caddy-data:
+  caddy-config:
