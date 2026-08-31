@@ -13,6 +13,8 @@ import com.galpi.galpibackend.domain.schedule.entity.QuoteSchedule;
 import com.galpi.galpibackend.domain.schedule.entity.RepeatType;
 import com.galpi.galpibackend.domain.schedule.notification.NotificationSender;
 import com.galpi.galpibackend.domain.schedule.repository.QuoteScheduleRepository;
+import com.galpi.galpibackend.domain.user.entity.User;
+import com.galpi.galpibackend.domain.user.repository.UserRepository;
 import com.galpi.galpibackend.domain.work.entity.BookSource;
 import com.galpi.galpibackend.domain.work.entity.Work;
 import java.time.LocalDateTime;
@@ -35,8 +37,19 @@ class ScheduleDispatchExecutorTest {
     @Mock
     private NotificationSender notificationSender;
 
+    @Mock
+    private UserRepository userRepository;
+
     @InjectMocks
     private ScheduleDispatchExecutor executor;
+
+    // 알림 수신 여부를 지정한 사용자(id=1)를 만든다.
+    private User user(boolean quoteAlarm) {
+        User user = User.builder().email("a@b.com").password("pw").nickname("독자").build();
+        ReflectionTestUtils.setField(user, "id", 1L);
+        user.updateNotificationSettings(quoteAlarm, null);
+        return user;
+    }
 
     private QuoteSchedule schedule(LocalDateTime lastSentAt) {
         return schedule(RepeatType.DAILY, lastSentAt);
@@ -65,11 +78,26 @@ class ScheduleDispatchExecutorTest {
         LocalDateTime now = LocalDateTime.of(2026, 8, 28, 8, 0);
         QuoteSchedule s = schedule(null);
         given(scheduleRepository.findById(1L)).willReturn(Optional.of(s));
+        given(userRepository.findById(1L)).willReturn(Optional.of(user(true)));
 
         executor.dispatchOne(1L, now);
 
         verify(notificationSender).send(eq(1L), eq("데미안"), eq("새는 알에서..."), eq(100L));
         assertThat(s.getLastSentAt()).isEqualTo(now);
+    }
+
+    @Test
+    @DisplayName("사용자가 예약 문장 알림을 껐으면 발송하지 않고 last_sent_at도 남기지 않는다")
+    void dispatchOne_skipsWhenAlarmOff() {
+        LocalDateTime now = LocalDateTime.of(2026, 8, 28, 8, 0);
+        QuoteSchedule s = schedule(null);
+        given(scheduleRepository.findById(1L)).willReturn(Optional.of(s));
+        given(userRepository.findById(1L)).willReturn(Optional.of(user(false)));
+
+        executor.dispatchOne(1L, now);
+
+        verify(notificationSender, never()).send(any(), any(), any(), any());
+        assertThat(s.getLastSentAt()).isNull();
     }
 
     @Test
@@ -90,6 +118,7 @@ class ScheduleDispatchExecutorTest {
         LocalDateTime now = LocalDateTime.of(2026, 8, 28, 8, 0);
         QuoteSchedule s = schedule(RepeatType.ONCE, null);
         given(scheduleRepository.findById(1L)).willReturn(Optional.of(s));
+        given(userRepository.findById(1L)).willReturn(Optional.of(user(true)));
 
         executor.dispatchOne(1L, now);
 

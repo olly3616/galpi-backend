@@ -13,6 +13,13 @@ public interface QuoteRepository extends JpaRepository<Quote, Long> {
 
     Page<Quote> findByUserIdAndWorkIdOrderByCreatedAtDesc(Long userId, Long workId, Pageable pageable);
 
+    // 내 전체 대사(작품 무관). 출처(work)를 fetch join으로 함께 로딩해 N+1을 방지한다.
+    // 소프트 삭제된 대사는 @SQLRestriction으로 제외된다.
+    @Query(value = "select q from Quote q join fetch q.work "
+            + "where q.userId = :userId order by q.createdAt desc",
+            countQuery = "select count(q) from Quote q where q.userId = :userId")
+    Page<Quote> findByUserIdWithWork(@Param("userId") Long userId, Pageable pageable);
+
     // 소프트 삭제된 대사는 @SQLRestriction으로 제외되어 카운트에서도 빠진다.
     long countByUserId(Long userId);
 

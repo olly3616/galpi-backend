@@ -6,8 +6,10 @@ import com.galpi.galpibackend.domain.quote.entity.Quote;
 import com.galpi.galpibackend.domain.quote.entity.Visibility;
 import com.galpi.galpibackend.domain.quote.repository.QuoteRepository;
 import com.galpi.galpibackend.domain.user.dto.MyProfileResponse;
+import com.galpi.galpibackend.domain.user.dto.NotificationSettingsResponse;
 import com.galpi.galpibackend.domain.user.dto.ProfileQuote;
 import com.galpi.galpibackend.domain.user.dto.ProfileResponse;
+import com.galpi.galpibackend.domain.user.dto.UpdateNotificationSettingsRequest;
 import com.galpi.galpibackend.domain.user.dto.UpdateProfileRequest;
 import com.galpi.galpibackend.domain.user.entity.User;
 import com.galpi.galpibackend.domain.user.repository.UserRepository;
@@ -95,6 +97,22 @@ public class ProfileService {
         }
         user.updateProfile(request.nickname(), request.bio(), request.profileImageUrl());
         return toMyProfile(user);
+    }
+
+    @Transactional(readOnly = true)
+    public NotificationSettingsResponse getNotificationSettings(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
+        return NotificationSettingsResponse.from(user);
+    }
+
+    @Transactional
+    public NotificationSettingsResponse updateNotificationSettings(Long userId,
+                                                                   UpdateNotificationSettingsRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND));
+        user.updateNotificationSettings(request.quoteAlarm(), request.marketing());
+        return NotificationSettingsResponse.from(user);
     }
 
     private MyProfileResponse toMyProfile(User user) {

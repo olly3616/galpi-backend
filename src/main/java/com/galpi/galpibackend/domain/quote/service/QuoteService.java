@@ -1,6 +1,7 @@
 package com.galpi.galpibackend.domain.quote.service;
 
 import com.galpi.galpibackend.domain.quote.dto.CreateQuoteRequest;
+import com.galpi.galpibackend.domain.quote.dto.MyQuoteItem;
 import com.galpi.galpibackend.domain.quote.dto.QuoteResponse;
 import com.galpi.galpibackend.domain.quote.dto.UpdateQuoteRequest;
 import com.galpi.galpibackend.domain.quote.dto.WorkQuotesResponse;
@@ -74,6 +75,22 @@ public class QuoteService {
                 .map(ScheduleResponse::from)
                 .toList();
         return QuoteResponse.of(quote, schedules);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<MyQuoteItem> getMyQuotes(Long userId, int page, int size) {
+        Page<Quote> quotePage = quoteRepository
+                .findByUserIdWithWork(userId, PageRequest.of(page, size));
+        List<Long> quoteIds = quotePage.getContent().stream().map(Quote::getId).toList();
+        Set<Long> scheduledQuoteIds = quoteIds.isEmpty()
+                ? Set.of()
+                : Set.copyOf(scheduleRepository.findQuoteIdsWithScheduleIn(quoteIds));
+
+        List<MyQuoteItem> items = quotePage.getContent().stream()
+                .map(quote -> MyQuoteItem.from(quote, scheduledQuoteIds.contains(quote.getId())))
+                .toList();
+
+        return PageResponse.from(quotePage, items);
     }
 
     @Transactional(readOnly = true)

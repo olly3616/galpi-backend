@@ -14,7 +14,9 @@ import com.galpi.galpibackend.domain.quote.entity.Quote;
 import com.galpi.galpibackend.domain.quote.entity.Visibility;
 import com.galpi.galpibackend.domain.quote.repository.QuoteRepository;
 import com.galpi.galpibackend.domain.user.dto.MyProfileResponse;
+import com.galpi.galpibackend.domain.user.dto.NotificationSettingsResponse;
 import com.galpi.galpibackend.domain.user.dto.ProfileResponse;
+import com.galpi.galpibackend.domain.user.dto.UpdateNotificationSettingsRequest;
 import com.galpi.galpibackend.domain.user.dto.UpdateProfileRequest;
 import com.galpi.galpibackend.domain.user.entity.User;
 import com.galpi.galpibackend.domain.user.repository.UserRepository;
@@ -195,5 +197,30 @@ class ProfileServiceTest {
 
         assertThat(response.nickname()).isEqualTo("책친구");
         verify(userRepository, never()).existsByNickname(any());
+    }
+
+    @Test
+    @DisplayName("알림 설정 조회는 기본값(quoteAlarm=true, marketing=false)을 반환한다")
+    void getNotificationSettings_defaults() {
+        given(userRepository.findById(1L)).willReturn(Optional.of(userWithId(1L)));
+
+        NotificationSettingsResponse response = profileService.getNotificationSettings(1L);
+
+        assertThat(response.quoteAlarm()).isTrue();
+        assertThat(response.marketing()).isFalse();
+    }
+
+    @Test
+    @DisplayName("알림 설정 수정은 전달한 항목만 변경한다")
+    void updateNotificationSettings_partial() {
+        User user = userWithId(1L);
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+
+        NotificationSettingsResponse response = profileService.updateNotificationSettings(1L,
+                new UpdateNotificationSettingsRequest(false, null));
+
+        assertThat(response.quoteAlarm()).isFalse();
+        assertThat(response.marketing()).isFalse(); // 미전달 → 기본값 유지
+        assertThat(user.isQuoteAlarm()).isFalse();
     }
 }
